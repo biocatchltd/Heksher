@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "Heksher"
+version = "0.1.0"
+description = "Heksker"
+authors = ["Biocatch LTD"]
+
+[tool.poetry.dependencies]
+python = "~3.8"
+
+fastapi = "^0.62.0"
+httpx = "^0.16.0"
+orjson = "^3.4.0"
+pydantic = "^1.7.0"
+databases = "^0.4.1"
+alembic = "^1.4.3"
+uvicorn = "^0.13.2"
+
+[tool.poetry.dev-dependencies]
+pytest-asyncio = "*"
+pytest-cov = "^2.10"
+flake8 = "^3.8.4"
+pytype = "^2020.12.16"
+
+[build-system]
+requires = ["poetry>=1.0.0"]
+build-backend = "poetry.masonry.api"
