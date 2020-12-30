@@ -1,5 +1,6 @@
 from asyncio import gather
-from typing import Optional, Dict, Any, Mapping
+from datetime import datetime
+from typing import Optional, Any, Mapping
 
 import orjson
 from sqlalchemy import select
@@ -56,7 +57,23 @@ class SettingMixin(DBLogicBase):
                 [{'cf': cf} for cf in setting.configurable_features]
             )
 
-    async def update_setting(self, name, changed: Mapping[str, Any]):
+    async def update_setting(self, name: str, changed: Mapping[str, Any], new_contexts):
+        async with self.db.transaction():
+            if changed:
+                await self.db.execute(
+                    settings.update().where(settings.c.name == name).values(**changed)
+                )
+            if new_contexts:
+                await self.db.execute_many(
+                    configurable.insert().values(
+                        settings=name,
+                        context_feature=':cf'
+                    ),
+                    [{'cf': cf} for cf in new_contexts]
+                )
+
+    async def touch_setting(self, name: str, timestamp: Optional[datetime]):
+        timestamp = timestamp or datetime.now()
         await self.db.execute(
-            settings.update().where(settings.c.name == name).values(changed)
+            settings.update().where(settings.c.name == name).values(last_updated_time=timestamp)
         )

@@ -2,7 +2,7 @@ import json
 import re
 from abc import ABC, abstractmethod
 from orjson import loads
-from typing import Union, Tuple, FrozenSet, Sequence, Pattern, Type
+from typing import Tuple, FrozenSet, Sequence, Pattern, Type
 
 
 class SettingType(ABC):

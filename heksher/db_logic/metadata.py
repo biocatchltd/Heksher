@@ -16,8 +16,9 @@ context_features = Table('context_features', metadata,
                          )
 
 configurable = Table('configurable', metadata,
-                     Column('setting', ForeignKey(settings.columns.name)),
+                     Column('setting', ForeignKey(settings.columns.name), index=True),
                      Column('context_feature', ForeignKey(context_features.columns.name)),
+                     UniqueConstraint('setting', 'context_feature')
                      )
 
 rules = Table('rules', metadata,

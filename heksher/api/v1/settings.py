@@ -85,5 +85,9 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
         rewritten.extend('metadata.'+k for k in metadata_changed)
         changed['metadata'] = str(orjson.dumps(new_setting.metadata), 'utf-8')
 
-    await app.db_logic.update_setting(input.name, changed)
+    if rewritten:
+        app.logger.warn('setting fields changed', extra={'setting': input.name, 'rewritten': rewritten})
+
+    if changed or new_configurable_features:
+        await app.db_logic.update_setting(input.name, changed, new_configurable_features)
     return DeclareSettingResponse(created=False, rewritten=rewritten)
