@@ -37,3 +37,8 @@ class ContextFeatureMixin(DBLogicBase):
 
     async def get_not_context_features(self, candidates: Iterable[str]) -> AbstractSet[str]:
         return set(candidates) - set(await self.get_context_features())
+
+    async def is_context_feature(self, context_feature: str):
+        rows = await self.db.fetch_one(select([context_features.c.name])
+                                       .where(context_features.c.name==context_feature))
+        return rows is not None

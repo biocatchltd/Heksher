@@ -2,7 +2,9 @@ import json
 import re
 from abc import ABC, abstractmethod
 from orjson import loads
-from typing import Tuple, FrozenSet, Sequence, Pattern, Type
+from typing import Tuple, FrozenSet, Sequence, Pattern, Type, AbstractSet
+
+from heksher.util import JsonPrimitiveSet
 
 
 class SettingType(ABC):
@@ -49,8 +51,23 @@ class PrimitiveSettingType(SettingType):
         return type(x) in self.types
 
 
+class IntegerPrimitiveSettingType(PrimitiveSettingType):
+    def __init__(self, name: str):
+        super().__init__((int, float))
+        self.name = name
+
+    def __eq__(self, other):
+        return type(self) is type(other) and self.types == other.types and self.name == other.name
+
+    def __str__(self):
+        return self.name
+
+    def validate(self, x) -> bool:
+        return super().validate(x) and x % 1 == 0
+
+
 class OptionedSettingType(SettingType, ABC):
-    def __init__(self, options: FrozenSet):
+    def __init__(self, options: AbstractSet):
         self.options = options
 
     def __eq__(self, other):
@@ -61,16 +78,13 @@ class OptionedSettingType(SettingType, ABC):
         options = loads(json_option_list)
         if not isinstance(options, list):
             raise TypeError(f'expected list, got {type(options)}')
-        if not all(
-                type(option) not in (int, str, float, bool) for option in options
-        ):
-            raise TypeError('cannot have an option of non-primitive value')
-        return cls(frozenset(options))
+        option_set = JsonPrimitiveSet(options)
+        return cls(option_set)
 
 
 class FlagSettingType(OptionedSettingType):
     def __str__(self):
-        return 'Flags[' + ",".join(json.dumps(option) for option in self.options) + ']'
+        return 'Flags[' + ",".join(sorted(json.dumps(option) for option in self.options)) + ']'
 
     def validate(self, x) -> bool:
         seen = set()
@@ -85,7 +99,7 @@ class FlagSettingType(OptionedSettingType):
 
 class EnumSettingType(OptionedSettingType):
     def __str__(self):
-        return 'Enum[' + ",".join(json.dumps(option) for option in self.options) + ']'
+        return 'Enum[' + ",".join(sorted(json.dumps(option) for option in self.options)) + ']'
 
     def validate(self, x: str) -> bool:
         return x in self.options
@@ -124,7 +138,7 @@ class MappingSettingType(SingleGenericSettingType):
 
 
 _primitives = {
-    'int': PrimitiveSettingType((int,)),
+    'int': IntegerPrimitiveSettingType('int'),
     'float': PrimitiveSettingType((float, int)),
     'str': PrimitiveSettingType((str,)),
     'bool': PrimitiveSettingType((bool,))
@@ -132,7 +146,7 @@ _primitives = {
 
 _with_options: Sequence[Tuple[Pattern[str], Type[OptionedSettingType]]] = [
     (re.compile(r'Flags\s*'), FlagSettingType),
-    (re.compile(r'Enums\s*'), EnumSettingType),
+    (re.compile(r'Enum\s*'), EnumSettingType),
 ]
 
 _generics: Sequence[Tuple[Pattern[str], Type[SingleGenericSettingType]]] = [

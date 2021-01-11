@@ -8,7 +8,7 @@ from heksher.db_logic.rule import RuleMixin
 from heksher.db_logic.setting import SettingMixin
 
 
-class DBLogic(DBLogicBase, ContextFeatureMixin, SettingMixin, RuleMixin):
+class DBLogic(ContextFeatureMixin, SettingMixin, RuleMixin):
     def __init__(self, logger: Logger, db: Database):
         self.db = db
         self.logger = logger
