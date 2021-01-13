@@ -3,5 +3,8 @@ from databases import Database
 
 
 class DBLogicBase:
-    db : Database
+    """
+    A base class for DBLogic mixins
+    """
+    db: Database
     logger: Logger

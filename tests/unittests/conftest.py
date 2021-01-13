@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock
 from heksher.db_logic import DBLogic
 from pytest import fixture
 from starlette.testclient import TestClient
-from envolved.envparser import env_parser
 
 import heksher.app as app_mod
 from heksher.main import app
@@ -37,7 +36,6 @@ def mock_database():
 def app_client(monkeypatch, mock_database):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', 'dummy')
     monkeypatch.setenv('STARTUP_CONTEXT_FEATURES', '["A","B","C"]')
-    env_parser.reload()
 
     monkeypatch.setattr(app_mod, 'Database', mock_database)
     monkeypatch.setattr(app_mod, 'DBLogic', lambda *a: AsyncMock(DBLogic))

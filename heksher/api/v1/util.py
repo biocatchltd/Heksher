@@ -11,9 +11,10 @@ def orjson_dumps(v, **kwargs):
 
 class ORJSONModel(BaseModel):
     """
-    BaseModel with default orjson loads,dumps
+    BaseModel with default orjson loads, dumps
     """
 
+    # note that this superclass is ineffectual until https://github.com/tiangolo/fastapi/pull/2347 is merged
     class Config:
         json_dumps = orjson_dumps
         json_loads = orjson.loads
@@ -25,5 +26,6 @@ def application(request: Request):
     A helper dependancy to get the app instance
     """
     return request.app
+
 
 router = APIRouter(prefix='/api/v1')

@@ -1,20 +1,18 @@
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional, Any, Dict, Collection
+from typing import Any, Dict, Sequence
 
 from heksher.setting_types import SettingType
-
-NOT_LOADED = object()
-"""
-A sentinel value to place in setting attributes that have not been loaded for efficiency.
-"""
 
 
 @dataclass
 class Setting:
     name: str
+    """The name of a setting"""
     type: SettingType
+    """The type of the setting"""
     default_value: Any
-    last_touch_time: datetime
-    configurable_features: Collection[str]
+    """The default value of the setting, or None if there is no default value"""
+    configurable_features: Sequence[str]
+    """The configurable features of the setting, should be in hierarchical order"""
     metadata: Dict[str, Any]
+    """user-defined metadata"""

@@ -1,6 +1,6 @@
 import json
 
-from pytest import fixture
+from pytest import fixture, mark
 
 
 @fixture
@@ -15,7 +15,8 @@ def size_limit_setting(app_client):
     res.raise_for_status()
     assert res.json() == {
         'created': True,
-        'rewritten': []
+        'changed': [],
+        'incomplete': {}
     }
 
 
@@ -31,6 +32,67 @@ def test_declare_new_setting(size_limit_setting, app_client):
     }
 
 
+@mark.parametrize('type_', [15, 'Flags{1,2,3}', 'enum[1,2,3]'])
+def test_declare_new_setting_bad_type(app_client, type_):
+    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme'],
+        'type': type_,
+        'default_value': 200.5,
+        'metadata': {'testing': True}
+    }))
+    assert res.status_code == 422
+
+
+def test_declare_new_setting_bad_default(app_client):
+    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200.5,
+        'metadata': {'testing': True}
+    }))
+    assert res.status_code == 422
+
+
+def test_declare_new_setting_bad_cf(app_client):
+    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme', 'color'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True}
+    }))
+    assert res.status_code == 422
+
+
+def test_declare_new_setting_modify_bad_cf(size_limit_setting, app_client):
+    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme', 'color'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True}
+    }))
+    assert res.status_code == 422
+
+
+def test_declare_no_modify(size_limit_setting, app_client):
+    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True}
+    }))
+    res.raise_for_status()
+    assert res.json() == {
+        'created': False,
+        'changed': [],
+        'incomplete': {}
+    }
+
+
 def test_declare_modify(app_client):
     res = app_client.put('api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
@@ -42,7 +104,8 @@ def test_declare_modify(app_client):
     res.raise_for_status()
     assert res.json() == {
         'created': True,
-        'rewritten': []
+        'changed': [],
+        'incomplete': {}
     }
 
     res = app_client.put('api/v1/settings/declare', data=json.dumps({
@@ -55,12 +118,13 @@ def test_declare_modify(app_client):
     res.raise_for_status()
     assert res.json() == {
         'created': False,
-        'rewritten': [
+        'changed': [
             'configurable_features',
             'default_value',
             'metadata.ctr',
             'metadata.dummy',
-        ]
+        ],
+        'incomplete': {}
     }
 
     res = app_client.get('api/v1/settings/size_limit')
@@ -83,6 +147,34 @@ def test_declare_conflict(size_limit_setting, app_client):
         'metadata': {'testing': True}
     }))
     assert res.status_code == 409
+
+
+def test_declare_incomplete(size_limit_setting, app_client):
+    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+        'name': 'size_limit',
+        'configurable_features': ['user'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True}
+    }))
+    res.raise_for_status()
+    assert res.json() == {
+        'created': False,
+        'changed': [],
+        'incomplete': {
+            'configurable_features': ['user', 'theme']
+        }
+    }
+
+    res = app_client.get('api/v1/settings/size_limit')
+    res.raise_for_status()
+    assert res.json() == {
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True}
+    }
 
 
 def test_get_setting(size_limit_setting, app_client):
@@ -109,6 +201,11 @@ def test_delete_setting(size_limit_setting, app_client):
     assert res.status_code == 404
 
 
+def test_delete_setting_missing(size_limit_setting, app_client):
+    res = app_client.delete('api/v1/settings/size_limit2')
+    assert res.status_code == 404
+
+
 def test_get_settings(app_client):
     def mk_setting(name: str):
         res = app_client.put('api/v1/settings/declare', data=json.dumps({
@@ -119,7 +216,8 @@ def test_get_settings(app_client):
         res.raise_for_status()
         assert res.json() == {
             'created': True,
-            'rewritten': []
+            'changed': [],
+            'incomplete': {}
         }
 
     mk_setting('a')

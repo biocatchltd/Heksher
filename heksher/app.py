@@ -14,6 +14,9 @@ startup_context_features = EnvVar('HEKSHER_STARTUP_CONTEXT_FEATURES', type=JsonP
 
 
 class HeksherApp(FastAPI):
+    """
+    The application class
+    """
     db: Database
     db_logic: DBLogic
 

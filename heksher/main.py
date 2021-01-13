@@ -22,7 +22,7 @@ async def shutdown():
 @app.get('/api/health')
 async def health_check():
     """
-    Check the health of the connections
+    Check the health of the connections to the service
     """
     is_healthy = await app.is_healthy()
     if not is_healthy:

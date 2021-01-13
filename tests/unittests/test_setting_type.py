@@ -149,3 +149,48 @@ def test_flags():
     assert not s_type.validate([1, 2])
     assert not s_type.validate([False])
     assert not s_type.validate([True, 0, 0])
+
+
+def test_generic_sequence():
+    s_type = setting_type('Sequence<Enum[1,2,3]>')
+    assert s_type.validate([1, 3, 1, 2])
+    assert s_type.validate([1])
+    assert s_type.validate([])
+
+    assert not s_type.validate(1)
+    assert not s_type.validate({1: 1})
+    assert not s_type.validate([1, 3, 6])
+
+
+def test_nested_sequence():
+    s_type = setting_type('Sequence<Sequence<int>>')
+    assert s_type.validate([[3, 2, 1], [8, 7, 6, 5, 4], [15, 14, 13, 12, 11, 10, 9]])
+
+    assert not s_type.validate([3, 2, 1])
+
+
+def test_generic_mapping():
+    s_type = setting_type('Mapping<Enum[1,2,3]>')
+    assert s_type.validate({'one': 1, 'three': 3, 'oneagain': 1, 'two': 2})
+    assert s_type.validate({'one': 1})
+    assert s_type.validate({})
+
+    assert not s_type.validate(1)
+    assert not s_type.validate([1])
+    assert not s_type.validate({'one': 1, 'three': 3, 'six': 6})
+
+
+@mark.parametrize('gen_kind', ['Sequence', 'Mapping'])
+def test_generic_types(gen_kind):
+    strings = [
+        f'{gen_kind}<int>',
+        f'{gen_kind}<float>',
+        f'{gen_kind}<bool>',
+        f'{gen_kind}<str>',
+        f'{gen_kind}<Enum[false,true]>',
+        f'{gen_kind}<Sequence<int>>',
+    ]
+    types = [setting_type(s) for s in strings]
+    for t, s in zip(types, strings):
+        assert str(t) == s
+        assert all(other is t or other != t for other in types)

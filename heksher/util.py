@@ -2,6 +2,11 @@ from typing import AbstractSet, Union, Any, Tuple, Set
 
 
 class JsonPrimitiveSet(AbstractSet[Union[str, bool, float, int]]):
+    """
+    A set of primitives that keeps to JS logic instead of python logic, namely:
+    * ints and floats are indistinguishable (1 === 1.0)
+    * ints and bools are distinguishable (1 !== true)
+    """
     def __init__(self, elements):
         self._inner: Set[Tuple[type, Any]] = set(self._inner_element(e) for e in elements)
 

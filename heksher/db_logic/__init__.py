@@ -9,6 +9,10 @@ from heksher.db_logic.setting import SettingMixin
 
 
 class DBLogic(ContextFeatureMixin, SettingMixin, RuleMixin):
+    """
+    Class to handle all logic for interacting with the DB
+    """
+    # note that all methods are implemented inside mixin classes
     def __init__(self, logger: Logger, db: Database):
         self.db = db
         self.logger = logger
