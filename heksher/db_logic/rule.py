@@ -3,6 +3,8 @@ from __future__ import annotations
 from asyncio.tasks import gather
 from collections import defaultdict
 from datetime import datetime
+from itertools import groupby
+from operator import itemgetter
 from typing import Dict, Optional, Any, List, DefaultDict, Tuple, NamedTuple
 
 import orjson
@@ -191,17 +193,19 @@ class RuleMixin(DBLogicBase):
           from conditions
           WHERE rule = C.rule AND (context_feature, feature_value) NOT IN ({condition_tuples})
         )
-        ORDER BY context_features.index;
+        ORDER BY rules.id, context_features.index;
         """
         conditions_results = await self.db.fetch_all(query)
+        applicable_rules: Dict[int, Tuple[Tuple[str, str], ...]] = {}
         # group all the conditions by rules
-        applicable_rules: DefaultDict[int, List[Tuple[str, str]]] = defaultdict(list)
-        for row in conditions_results:
-            if row['context_feature'] is None:
-                # though we don't support users entering rules without conditions, we nevertheless prepare against it
-                applicable_rules.setdefault(row['id'], [])
-                continue
-            applicable_rules[row['id']].append((row['context_feature'], row['feature_value']))
+        for rule_id, rows in groupby(conditions_results, key=itemgetter('id')):
+            rule_conditions = tuple((row['context_feature'], row['feature_value']) for row in rows)
+            if rule_conditions == ((None, None),):
+                # this will occur if a rule has no exact-match conditions (i.e. it is a wildcard on all features)
+                # though we don't support users entering rules without conditions, we nevertheless prepare against
+                # them existing in the DB
+                rule_conditions = ()
+            applicable_rules[rule_id] = rule_conditions
 
         # finally, get all the actual data for each rule
         rule_query = select([rules.c.id, rules.c.setting, rules.c.value]).where(rules.c.id.in_(applicable_rules))
