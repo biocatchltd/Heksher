@@ -53,6 +53,9 @@ class RuleMixin(DBLogicBase):
                     .order_by(context_features.c.index)
             )
         )
+        # we query both the rule and its feature values at the same time. Meaning that if the rule does not exist,
+        # we make 1 too many calls. However, we expect to make so few get_rule calls to non-existent rules that this
+        # is negligible
         if not basic_results:
             return None
         metadata_ = orjson.loads(basic_results['metadata'])
@@ -77,20 +80,21 @@ class RuleMixin(DBLogicBase):
 
         """
         condition_count = len(match_conditions)
+        # we convert the conditions to a format that they can be queried with an "IN" condition
         condition_tuples = ','.join(f"('{k}','{v}')" for (k, v) in match_conditions.items())
         query_template = f'''
-        SELECT DISTINCT rules.id
-        FROM conditions as C
-        RIGHT JOIN (
+        SELECT DISTINCT id -- get all ids
+        FROM (
           SELECT * from rules
           WHERE setting = :setting
-          AND (SELECT COUNT(*) FROM conditions WHERE rule = rules.id) = :condition_count
-        ) as rules
-        ON rules.id = C.rule
-        WHERE NOT EXISTS (
+        ) as rules -- only from rules pertaining to the setting
+        -- only rules that have exactly the correct number of conditions
+        WHERE (SELECT COUNT(*) FROM conditions WHERE rule = rules.id) = :condition_count
+        -- and that all their conditions are among those that we expect 
+        AND NOT EXISTS (
           SELECT *
           from conditions
-          WHERE rule = C.rule AND (context_feature, feature_value) NOT IN ({condition_tuples})
+          WHERE rule = id AND (context_feature, feature_value) NOT IN ({condition_tuples})
         );
         '''
 
@@ -170,11 +174,18 @@ class RuleMixin(DBLogicBase):
         settings_container = ','.join(f"'{name}'" for name in applicable_settings)
 
         query = f"""
-        SELECT rules.id, C.context_feature, C.feature_value
-        FROM (
-        conditions as C RIGHT JOIN (SELECT * from rules where setting IN ({settings_container})) as rules
-        ON rules.id = C.rule
-        ) LEFT JOIN context_features ON context_features.name = C.context_feature
+        SELECT rules.id, C.context_feature, C.feature_value -- get all the conditions for all the rules
+        FROM 
+        (
+            -- filter out rules for non-applicable settings
+            (SELECT * from rules where setting IN ({settings_container})) as rules 
+            LEFT JOIN -- we left join so that if we have a rule without conditions, we still retrieve it
+            conditions as C 
+            ON rules.id = C.rule
+        ) 
+        -- we want the conditions sorted by hierarchy, so we need to add the context feature index
+        LEFT JOIN context_features ON context_features.name = C.context_feature
+        -- our one final condition is to rule out any rule that has a condition we do not expect
         WHERE NOT EXISTS (
           SELECT *
           from conditions
@@ -183,6 +194,7 @@ class RuleMixin(DBLogicBase):
         ORDER BY context_features.index;
         """
         conditions_results = await self.db.fetch_all(query)
+        # group all the conditions by rules
         applicable_rules: DefaultDict[int, List[Tuple[str, str]]] = defaultdict(list)
         for row in conditions_results:
             if row['context_feature'] is None:
@@ -191,6 +203,7 @@ class RuleMixin(DBLogicBase):
                 continue
             applicable_rules[row['id']].append((row['context_feature'], row['feature_value']))
 
+        # finally, get all the actual data for each rule
         rule_query = select([rules.c.id, rules.c.setting, rules.c.value]).where(rules.c.id.in_(applicable_rules))
         if include_metadata:
             rule_query.append_column(rules.c.metadata)

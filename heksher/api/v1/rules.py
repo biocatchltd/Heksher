@@ -35,7 +35,7 @@ class SearchRuleInput(ORJSONModel):
     @classmethod
     def feature_values_not_empty(cls, v):
         if not v:
-            raise ValueError('feature_value must not be empty')
+            raise ValueError('feature_values must not be empty')
         return v
 
 

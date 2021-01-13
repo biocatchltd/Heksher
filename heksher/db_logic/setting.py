@@ -21,6 +21,7 @@ class SettingMixin(DBLogicBase):
             A collection of names that have no settings with that name.
 
         """
+        # make the names usable as VALUES entries
         names = ', '.join(f"('{n}')" for n in names)
 
         query = f"""
@@ -57,6 +58,9 @@ class SettingMixin(DBLogicBase):
                     .order_by(context_features.c.index)
             )
         )
+        # we query both the rule and its configurable features at the same time. Meaning that if the rule does not
+        # exist, we make 1 too many calls. However, we expect to make so few get_setting calls to non-existent rules
+        # that this is negligible
         if data_row is None:
             return None
 
@@ -133,6 +137,7 @@ class SettingMixin(DBLogicBase):
             Whether a setting with the name was found
         """
         async with self.db.transaction():
+            # AFAICT, this is the best to delete and get number of rows deleted with Databases
             return (await self.db.fetch_val("""
             WITH n AS (DELETE FROM settings WHERE name = :name RETURNING *)
             SELECT COUNT(*) FROM n;

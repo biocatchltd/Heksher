@@ -71,6 +71,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
 
     new_configurable_features = new_setting_cfs - existing_setting_cfs
     if new_configurable_features:
+        # we need to make sure the new CFs are actually CFs
         not_cf = await app.db_logic.get_not_context_features(new_configurable_features)
         if not_cf:
             return PlainTextResponse(f'{not_cf} are not acceptable context features',

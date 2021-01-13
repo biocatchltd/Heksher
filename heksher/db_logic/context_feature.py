@@ -29,16 +29,16 @@ class ContextFeatureMixin(DBLogicBase):
         if not super_sequence:
             raise RuntimeError(f'expected context features to be a subsequence of {list(expected)}, '
                                f'actual: {list(actual)}')
+        # get all context features that are out place with what we expect
         misplaced_keys = [k for k, v in actual.items() if expected[k] != v]
         if misplaced_keys:
             self.logger.warning('fixing indexing for context features', extra={'misplaced_keys': misplaced_keys})
-            index_fix = [{'k': k, 'v': expected[k]} for k in misplaced_keys]
             query = """
             UPDATE context_features
             SET index = :v
             WHERE name = :k
             """
-            await self.db.execute_many(query, index_fix)
+            await self.db.execute_many(query, [{'k': k, 'v': expected[k]} for k in misplaced_keys])
         if super_sequence.new_elements:
             self.logger.warning('adding new context features', extra={
                 'new_context_features': [element for (element, _) in super_sequence.new_elements]
@@ -68,7 +68,7 @@ class ContextFeatureMixin(DBLogicBase):
             A set including only the candidates that are not context features
 
         """
-        # todo improve?
+        # todo improve? we expect both sets to be very small (<20 elements)
         return set(candidates) - set(await self.get_context_features())
 
     async def is_context_feature(self, context_feature: str):
