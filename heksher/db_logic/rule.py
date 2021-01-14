@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from asyncio.tasks import gather
-from collections import defaultdict
 from datetime import datetime
 from itertools import groupby
 from operator import itemgetter
-from typing import Dict, Optional, Any, List, DefaultDict, Tuple, NamedTuple
+from typing import Dict, Optional, Any, List, Tuple, NamedTuple, Sequence
 
 import orjson
 from sqlalchemy import select, join
@@ -30,7 +29,7 @@ class RuleSpec(NamedTuple):
     """
     setting: str
     value: Any
-    feature_values: List[Tuple[str, str]]
+    feature_values: Sequence[Tuple[str, str]]
     metadata: Optional[Dict[str, Any]]
 
 
@@ -49,10 +48,10 @@ class RuleMixin(DBLogicBase):
             ),
             self.db.fetch_all(
                 select([conditions.c.context_feature, conditions.c.feature_value])
-                    .select_from(join(conditions, context_features,
-                                      conditions.c.context_feature == context_features.c.name))
-                    .where(conditions.c.rule == id_)
-                    .order_by(context_features.c.index)
+                .select_from(join(conditions, context_features,
+                                  conditions.c.context_feature == context_features.c.name))
+                .where(conditions.c.rule == id_)
+                .order_by(context_features.c.index)
             )
         )
         # we query both the rule and its feature values at the same time. Meaning that if the rule does not exist,
@@ -92,7 +91,7 @@ class RuleMixin(DBLogicBase):
         ) as rules -- only from rules pertaining to the setting
         -- only rules that have exactly the correct number of conditions
         WHERE (SELECT COUNT(*) FROM conditions WHERE rule = rules.id) = :condition_count
-        -- and that all their conditions are among those that we expect 
+        -- and that all their conditions are among those that we expect
         AND NOT EXISTS (
           SELECT *
           from conditions
@@ -134,8 +133,8 @@ class RuleMixin(DBLogicBase):
         async with self.db.transaction():
             rule_id = await self.db.fetch_val(
                 rules.insert()
-                    .values(setting=setting, value=value_, metadata=metadata_)
-                    .returning(rules.c.id)
+                .values(setting=setting, value=value_, metadata=metadata_)
+                .returning(rules.c.id)
             )
             await self.db.execute_many(
                 conditions.insert(),
@@ -163,7 +162,7 @@ class RuleMixin(DBLogicBase):
         if cache_time:
             settings_results = await self.db.fetch_all(
                 select([settings.c.name])
-                    .where(
+                .where(
                     settings.c.name.in_(setting_names)
                     & (settings.c.last_touch_time >= cache_time)
                 )
@@ -177,14 +176,14 @@ class RuleMixin(DBLogicBase):
 
         query = f"""
         SELECT rules.id, C.context_feature, C.feature_value -- get all the conditions for all the rules
-        FROM 
+        FROM
         (
             -- filter out rules for non-applicable settings
-            (SELECT * from rules where setting IN ({settings_container})) as rules 
+            (SELECT * from rules where setting IN ({settings_container})) as rules
             LEFT JOIN -- we left join so that if we have a rule without conditions, we still retrieve it
-            conditions as C 
+            conditions as C
             ON rules.id = C.rule
-        ) 
+        )
         -- we want the conditions sorted by hierarchy, so we need to add the context feature index
         LEFT JOIN context_features ON context_features.name = C.context_feature
         -- our one final condition is to rule out any rule that has a condition we do not expect

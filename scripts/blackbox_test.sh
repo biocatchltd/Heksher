@@ -1,0 +1,1 @@
+python -m pytest tests/blackbox -s -x --cov=heksher --cov-report=xml --cov-report=term-missing

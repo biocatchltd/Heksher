@@ -1,3 +1,4 @@
+import sys
 from os import getenv
 
 from alembic.config import Config
@@ -18,7 +19,10 @@ def create_all(connection_string):
 
 
 if __name__ == '__main__':
-    conn_string = getenv('HEKSHER_DB_CONNECTION_STRING')
-    if not conn_string:
-        raise RuntimeError('must set env var HEKSHER_DB_CONNECTION_STRING')
+    if len(sys.argv) == 2:
+        conn_string = sys.argv[1]
+    else:
+        conn_string = getenv('HEKSHER_DB_CONNECTION_STRING')
+        if not conn_string:
+            raise RuntimeError('must set env var HEKSHER_DB_CONNECTION_STRING')
     create_all(conn_string)

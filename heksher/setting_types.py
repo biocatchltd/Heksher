@@ -129,7 +129,7 @@ class OptionedSettingType(SettingType, ABC):
         if not isinstance(options, list):
             raise TypeError(f'expected list, got {type(options)}')
         option_set = JsonPrimitiveSet(options)
-        return cls(option_set)
+        return cls(option_set)  # pytype: disable=not-instantiable
 
 
 class FlagSettingType(OptionedSettingType):
@@ -176,7 +176,7 @@ class SingleGenericSettingType(SettingType, ABC):
         """
         utility method to parse inner parameter
         """
-        return cls(setting_type(generic_param_name))
+        return cls(setting_type(generic_param_name))  # pytype: disable=not-instantiable
 
 
 class SequenceSettingType(SingleGenericSettingType):

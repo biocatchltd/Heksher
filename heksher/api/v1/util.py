@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import orjson
 from fastapi import Depends, Request, APIRouter
-from pydantic.main import BaseModel
+from pydantic import BaseModel  # pytype: disable=import-error
 
 
 def orjson_dumps(v, **kwargs):

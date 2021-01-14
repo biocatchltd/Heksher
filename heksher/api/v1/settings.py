@@ -1,23 +1,27 @@
 from datetime import datetime
+from logging import getLogger
 from typing import List, Dict, Any
 
 import orjson
 from fastapi import APIRouter
-from pydantic import Field, root_validator
+from pydantic import Field, root_validator  # pytype: disable=import-error
 from starlette import status
 from starlette.responses import PlainTextResponse
 
 from heksher.api.v1.util import application, ORJSONModel, router as v1_router
+from heksher.api.v1.validation import SettingName, ContextFeatureName
 from heksher.app import HeksherApp
 from heksher.setting import Setting
 from heksher.setting_types import SettingType
 
 router = APIRouter(prefix='/settings')
 
+logger = getLogger(__name__)
+
 
 class DeclareSettingInput(ORJSONModel):
-    name: str = Field(description="the name of the setting")
-    configurable_features: List[str] = Field(
+    name: SettingName = Field(description="the name of the setting")
+    configurable_features: List[ContextFeatureName] = Field(
         description="a list of context features that the setting should allow rules to match by"
     )
     type: SettingType = Field(description="the type of the setting")
@@ -59,6 +63,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
         if not_cf:
             return PlainTextResponse(f'{not_cf} are not acceptable context features',
                                      status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        logger.warning('creating new setting', extra={'setting_name': new_setting.name})
         await app.db_logic.add_setting(new_setting)
         return DeclareSettingOutput(created=True, changed=[], incomplete={})
 
@@ -77,6 +82,8 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
             return PlainTextResponse(f'{not_cf} are not acceptable context features',
                                      status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
         changed.append('configurable_features')
+        logger.warning("adding new configurable features to setting",
+                       extra={'setting_name': new_setting.name, 'new_configurable_features': new_configurable_features})
 
     missing_cf = existing_setting_cfs - new_setting_cfs
     if missing_cf:
@@ -100,11 +107,13 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
         k for (k, v) in existing.metadata.items() if (k in new_setting.metadata and new_setting.metadata[k] != v)
     )
     if metadata_changed:
+        logger.warning('changing setting metadata',
+                       extra={'setting_name': new_setting.name, 'new_metadata': new_setting.metadata})
         changed.extend('metadata.' + k for k in sorted(metadata_changed))
         to_change['metadata'] = str(orjson.dumps(new_setting.metadata), 'utf-8')
 
     if changed:
-        app.logger.warn('setting fields changed', extra={'setting': input.name, 'changed': changed})
+        logger.warning('setting fields changed', extra={'setting': input.name, 'changed': changed})
 
     if to_change or new_configurable_features:
         await app.db_logic.update_setting(input.name, to_change, new_configurable_features)

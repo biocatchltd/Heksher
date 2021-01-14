@@ -2,11 +2,12 @@ from datetime import datetime
 from typing import List, Dict, Optional, Tuple, Union, Any
 
 from fastapi import APIRouter
-from pydantic import Field, validator
+from pydantic import Field, validator  # pytype: disable=import-error
 from starlette import status
 from starlette.responses import PlainTextResponse
 
 from heksher.api.v1.util import application, ORJSONModel, router as v1_router
+from heksher.api.v1.validation import SettingName, ContextFeatureName, ContextFeatureValue
 from heksher.app import HeksherApp
 from heksher.setting import Setting
 
@@ -28,8 +29,9 @@ async def delete_rule(rule_id: int, app: HeksherApp = application):
 
 
 class SearchRuleInput(ORJSONModel):
-    setting: str = Field(description="the setting name the rule belongs to")
-    feature_values: Dict[str, str] = Field(description="the exact-match conditions of the rule")
+    setting: SettingName = Field(description="the setting name the rule belongs to")
+    feature_values: Dict[ContextFeatureName, ContextFeatureValue] = \
+        Field(description="the exact-match conditions of the rule")
 
     @validator('feature_values')
     @classmethod
@@ -55,8 +57,9 @@ async def search_rule(input: SearchRuleInput, app: HeksherApp = application):
 
 
 class AddRuleInput(ORJSONModel):
-    setting: str = Field(description="the setting name the rule should apply ti")
-    feature_values: Dict[str, str] = Field(description="the exact-match conditions of the rule")
+    setting: SettingName = Field(description="the setting name the rule should apply ti")
+    feature_values: Dict[ContextFeatureName, ContextFeatureValue] = \
+        Field(description="the exact-match conditions of the rule")
     value: Any = Field(description="the value of the setting in contexts that match the rule")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="additional metadata of the rule")
 
@@ -94,8 +97,8 @@ async def add_rule(input: AddRuleInput, app: HeksherApp = application):
 
 
 class QueryRulesInput(ORJSONModel):
-    setting_names: List[str] = Field(description="a list of setting names to return the rules for")
-    context_features_options: Dict[str, List[str]] = Field(
+    setting_names: List[SettingName] = Field(description="a list of setting names to return the rules for")
+    context_features_options: Dict[ContextFeatureName, List[ContextFeatureValue]] = Field(
         description="a mapping of context features and possible values. Any rule with an exact-match condition not in"
                     " this mapping will not be returned"
     )

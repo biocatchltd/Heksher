@@ -6,7 +6,7 @@ from heksher.main import app
 
 def test_startup_existing_contexts(monkeypatch, sql_service, purge_sql):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
-    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', '["user", "trust", "theme"]')
+    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
     with sql_service.connection() as connection:
         connection.execute("""
@@ -19,7 +19,7 @@ def test_startup_existing_contexts(monkeypatch, sql_service, purge_sql):
 
 def test_startup_existing_unexpected_contexts(monkeypatch, sql_service, purge_sql):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
-    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', '["user", "trust", "theme"]')
+    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
     with sql_service.connection() as connection:
         connection.execute("""
@@ -30,9 +30,10 @@ def test_startup_existing_unexpected_contexts(monkeypatch, sql_service, purge_sq
         with TestClient(app):
             pass
 
+
 def test_startup_existing_bad_order(monkeypatch, sql_service, purge_sql):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
-    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', '["user", "trust", "theme"]')
+    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
     with sql_service.connection() as connection:
         connection.execute("""
@@ -46,7 +47,7 @@ def test_startup_existing_bad_order(monkeypatch, sql_service, purge_sql):
 
 def test_startup_existing_contexts_with_bad_indices(monkeypatch, sql_service, purge_sql):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
-    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', '["user", "trust", "theme"]')
+    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
     with sql_service.connection() as connection:
         connection.execute("""
@@ -67,9 +68,10 @@ def test_startup_existing_contexts_with_bad_indices(monkeypatch, sql_service, pu
         'theme': 2
     }
 
+
 def test_startup_existing_contexts_new_contexts(monkeypatch, sql_service, purge_sql):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
-    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', '["user", "trust", "theme"]')
+    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
     with sql_service.connection() as connection:
         connection.execute("""

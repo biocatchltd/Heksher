@@ -3,6 +3,8 @@ from typing import NamedTuple, Collection, Tuple, TypeVar, Generic, Sequence, Ha
 T = TypeVar('T', bound=Hashable)
 
 
+# pytype: disable=not-supported-yet
+
 class SupersequenceResults(NamedTuple, Generic[T]):
     """
     An object returned by is_supersequence to denote that the supersequence matches, along with the elements in the
@@ -54,3 +56,5 @@ def is_supersequence(supersequence: Sequence[T], subsequence: Collection[T]) \
         (k, j) for (j, k) in enumerate(supersequence[i + 1:], i + 1)
     )
     return SupersequenceResults(tuple(new_elements.items()))
+
+# pytype: enable=not-supported-yet

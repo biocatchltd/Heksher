@@ -1,6 +1,6 @@
+import heksher.api.v1.context_features  # noqa: F401
+import heksher.api.v1.rules  # noqa: F401
+import heksher.api.v1.settings  # noqa: F401
 from heksher.api.v1.util import router
-import heksher.api.v1.context_features
-import heksher.api.v1.rules
-import heksher.api.v1.settings
 
 __all__ = ['router']

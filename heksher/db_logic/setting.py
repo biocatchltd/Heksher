@@ -52,10 +52,10 @@ class SettingMixin(DBLogicBase):
             ),
             self.db.fetch_all(
                 select([configurable.c.context_feature])
-                    .select_from(join(configurable, context_features,
-                                      configurable.c.context_feature == context_features.c.name))
-                    .where(configurable.c.setting == name)
-                    .order_by(context_features.c.index)
+                .select_from(join(configurable, context_features,
+                                  configurable.c.context_feature == context_features.c.name))
+                .where(configurable.c.setting == name)
+                .order_by(context_features.c.index)
             )
         )
         # we query both the rule and its configurable features at the same time. Meaning that if the rule does not

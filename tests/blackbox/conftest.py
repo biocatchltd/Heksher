@@ -6,14 +6,14 @@ from yellowbox.extras.postgresql import PostgreSQLService
 from heksher.main import app
 
 # apparently this works
-from tests.blackbox.test_v1api_settings import size_limit_setting
+from tests.blackbox.test_v1api_settings import size_limit_setting  # noqa: F401
 
 import sys
 
 sys.path.append('alembic')
 del sys
 
-from from_scratch import create_all
+from from_scratch import create_all  # noqa: E402
 
 
 @fixture(scope='session')
@@ -44,7 +44,7 @@ def purge_sql(sql_service):
 @fixture
 def app_client(monkeypatch, sql_service, purge_sql):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
-    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', '["user", "trust", "theme"]')
+    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
     with TestClient(app) as app_client:
         yield app_client

@@ -1,16 +1,14 @@
 from asyncio import wait_for
-from logging import getLogger
-from typing import List
 
 from databases import Database
 from envolved import EnvVar
-from envolved.parsers import JsonParser
+from envolved.parsers import CollectionParser
 from fastapi import FastAPI
 
 from heksher.db_logic import DBLogic
 
 connection_string = EnvVar('HEKSHER_DB_CONNECTION_STRING', type=str)
-startup_context_features = EnvVar('HEKSHER_STARTUP_CONTEXT_FEATURES', type=JsonParser(List[str]))
+startup_context_features = EnvVar('HEKSHER_STARTUP_CONTEXT_FEATURES', type=CollectionParser(';', str))
 
 
 class HeksherApp(FastAPI):
@@ -22,14 +20,13 @@ class HeksherApp(FastAPI):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.logger = getLogger('heksher')
 
     async def startup(self):
         db_connection_string = connection_string.get()
         self.db = Database(db_connection_string)
         await self.db.connect()
 
-        self.db_logic = DBLogic(self.logger, self.db)
+        self.db_logic = DBLogic(self.db)
 
         # assert that the db logic holds up
         expected_context_features = startup_context_features.get()

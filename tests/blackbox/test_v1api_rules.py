@@ -1,6 +1,5 @@
 import json
 from datetime import datetime
-from time import time
 
 from pytest import fixture, mark
 
@@ -70,6 +69,16 @@ def test_add_rule_existing(example_rule, app_client):
         'metadata': {'test': True}
     }))
     assert res.status_code == 409
+
+
+def test_block_injection(example_rule, app_client):
+    res = app_client.post('/api/v1/rules', data=json.dumps({
+        'setting': 'size_limit',
+        'feature_values': {'theme': "' OR 1='1"},
+        'value': 10,
+        'metadata': {'test': True}
+    }))
+    assert res.status_code == 422
 
 
 def test_delete_rule(example_rule, app_client):
@@ -238,7 +247,7 @@ def test_query_rules_bad_settings(app_client, setup_rules):
 def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, sql_service):
     with sql_service.connection() as connection:
         connection.execute("""
-        INSERT INTO rules (setting, value, metadata) VALUES ('b', '10', '{"test": "yes"}') 
+        INSERT INTO rules (setting, value, metadata) VALUES ('b', '10', '{"test": "yes"}')
         """)
 
     res = app_client.get('/api/v1/rules/query', data=json.dumps({

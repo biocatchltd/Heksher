@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import Sequence, Iterable, AbstractSet
 
 from sqlalchemy import select
@@ -5,6 +6,8 @@ from sqlalchemy import select
 from heksher.db_logic.logic_base import DBLogicBase
 from heksher.db_logic.metadata import context_features
 from heksher.db_logic.util import is_supersequence
+
+logger = getLogger(__name__)
 
 
 class ContextFeatureMixin(DBLogicBase):
@@ -32,7 +35,7 @@ class ContextFeatureMixin(DBLogicBase):
         # get all context features that are out place with what we expect
         misplaced_keys = [k for k, v in actual.items() if expected[k] != v]
         if misplaced_keys:
-            self.logger.warning('fixing indexing for context features', extra={'misplaced_keys': misplaced_keys})
+            logger.warning('fixing indexing for context features', extra={'misplaced_keys': misplaced_keys})
             query = """
             UPDATE context_features
             SET index = :v
@@ -40,7 +43,7 @@ class ContextFeatureMixin(DBLogicBase):
             """
             await self.db.execute_many(query, [{'k': k, 'v': expected[k]} for k in misplaced_keys])
         if super_sequence.new_elements:
-            self.logger.warning('adding new context features', extra={
+            logger.warning('adding new context features', extra={
                 'new_context_features': [element for (element, _) in super_sequence.new_elements]
             })
             await self.db.execute_many(
