@@ -1,0 +1,36 @@
+name: Release
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+
+jobs:
+  verify_version:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Version verification
+      run: |
+        python -m pip install --upgrade pip
+        pip install --pre poetry
+        [ $(cut -d' ' -f2 <<< $(poetry version)) == ${GITHUB_REF#refs/tags/} ]
+
+  build_release:
+    needs: [verify_version]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build and push Docker images
+      uses: docker/build-push-action@v1.1.0
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        repository: biocatchtest/heksher
+        tag_with_ref: true
