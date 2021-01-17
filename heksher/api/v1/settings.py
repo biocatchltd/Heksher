@@ -54,7 +54,7 @@ class DeclareSettingOutput(ORJSONModel):
 @router.put('/declare', response_model=DeclareSettingOutput)
 async def declare_setting(input: DeclareSettingInput, app: HeksherApp = application):
     """
-    Ensure that a setting exists, creating it if necessary
+    Ensure that a setting exists, creating it if necessary.
     """
     new_setting = input.to_setting()
     existing = await app.db_logic.get_setting(input.name)
@@ -123,7 +123,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
 @router.delete('/{name}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_setting(name: str, app: HeksherApp = application):
     """
-    Delete a setting
+    Delete a setting.
     """
     deleted = await app.db_logic.delete_setting(name)
     if not deleted:
@@ -147,7 +147,7 @@ class GetSettingOutput(ORJSONModel):
             })
 async def get_setting(name: str, app: HeksherApp = application):
     """
-    get details on a setting
+    Get details on a setting.
     """
     setting = await app.db_logic.get_setting(name)
     if not setting:

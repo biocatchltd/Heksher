@@ -17,7 +17,7 @@ router = APIRouter(prefix='/rules')
 @router.delete('/{rule_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_rule(rule_id: int, app: HeksherApp = application):
     """
-    remove a rule
+    Remove a rule.
     """
     rule_spec = await app.db_logic.get_rule(rule_id)
 
@@ -48,7 +48,7 @@ class SearchRuleOutput(ORJSONModel):
 @router.get('/search', response_model=SearchRuleOutput)
 async def search_rule(input: SearchRuleInput, app: HeksherApp = application):
     """
-    get the ID of a rule with specific conditions
+    Get the ID of a rule with specific conditions.
     """
     rule_id = await app.db_logic.get_rule_id(input.setting, input.feature_values)
     if not rule_id:
@@ -71,7 +71,7 @@ class AddRuleOutput(ORJSONModel):
 @router.post('', response_model=AddRuleOutput, status_code=status.HTTP_201_CREATED)
 async def add_rule(input: AddRuleInput, app: HeksherApp = application):
     """
-    add a rule, and get its ID
+    Add a rule, and get its ID.
     """
     setting: Optional[Setting] = await app.db_logic.get_setting(input.setting)
     if not setting:
@@ -131,7 +131,7 @@ class QueryRulesOutputWithMetadata(ORJSONModel):
 @router.get('/query', response_model=Union[QueryRulesOutputWithMetadata, QueryRulesOutput])
 async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
     """
-    query settings for rules for a specific set of potential contexts
+    Query settings for rules for a specific set of potential contexts.
     """
     not_context_features = await app.db_logic.get_not_context_features(input.context_features_options)
     if not_context_features:
