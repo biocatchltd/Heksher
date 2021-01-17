@@ -26,7 +26,7 @@ jobs:
       run: poetry install
     - name: Linting
       run: poetry run sh scripts/lint.sh
-    - name: Run tests
+    - name: Run unittests
       run: poetry run sh scripts/unittest.sh
-    - name: Run tests
+    - name: Run blackbox tests
       run: poetry run sh scripts/blackbox_test.sh
