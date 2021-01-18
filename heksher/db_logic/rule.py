@@ -169,43 +169,47 @@ class RuleMixin(DBLogicBase):
         else:
             applicable_settings = setting_names
 
-        condition_tuples = ','.join(f"('{k}','{v}')" for (k, values) in feature_value_options.items() for v in values)
-        settings_container = ','.join(f"'{name}'" for name in applicable_settings)
+        if not applicable_settings:
+            # shortcut in case all settings are up-to-date
+            applicable_rules = {}
+            rule_results = []
+        else:
+            condition_tuples = ','.join(f"('{k}','{v}')" for (k, values) in feature_value_options.items() for v in values)
+            settings_container = ','.join(f"'{name}'" for name in applicable_settings)
+            query = f"""
+            SELECT rules.id, C.context_feature, C.feature_value -- get all the conditions for all the rules
+            FROM
+            (
+                (SELECT * from rules where setting IN ({settings_container})) as rules
+                LEFT JOIN
+                conditions as C
+                ON rules.id = C.rule
+            )
+            LEFT JOIN context_features ON context_features.name = C.context_feature
+            WHERE NOT EXISTS (
+              SELECT *
+              from conditions
+              WHERE rule = C.rule AND (context_feature, feature_value) NOT IN ({condition_tuples})
+            )
+            ORDER BY rules.id, context_features.index;
+            """
+            conditions_results = await self.db.fetch_all(query)
+            applicable_rules: Dict[int, Tuple[Tuple[str, str], ...]] = {}
+            # group all the conditions by rules
+            for rule_id, rows in groupby(conditions_results, key=itemgetter('id')):
+                rule_conditions = tuple((row['context_feature'], row['feature_value']) for row in rows)
+                if rule_conditions == ((None, None),):
+                    # this will occur if a rule has no exact-match conditions (i.e. it is a wildcard on all features)
+                    # though we don't support users entering rules without conditions, we nevertheless prepare against
+                    # them existing in the DB
+                    rule_conditions = ()
+                applicable_rules[rule_id] = rule_conditions
 
-        query = f"""
-        SELECT rules.id, C.context_feature, C.feature_value -- get all the conditions for all the rules
-        FROM
-        (
-            (SELECT * from rules where setting IN ({settings_container})) as rules
-            LEFT JOIN
-            conditions as C
-            ON rules.id = C.rule
-        )
-        LEFT JOIN context_features ON context_features.name = C.context_feature
-        WHERE NOT EXISTS (
-          SELECT *
-          from conditions
-          WHERE rule = C.rule AND (context_feature, feature_value) NOT IN ({condition_tuples})
-        )
-        ORDER BY rules.id, context_features.index;
-        """
-        conditions_results = await self.db.fetch_all(query)
-        applicable_rules: Dict[int, Tuple[Tuple[str, str], ...]] = {}
-        # group all the conditions by rules
-        for rule_id, rows in groupby(conditions_results, key=itemgetter('id')):
-            rule_conditions = tuple((row['context_feature'], row['feature_value']) for row in rows)
-            if rule_conditions == ((None, None),):
-                # this will occur if a rule has no exact-match conditions (i.e. it is a wildcard on all features)
-                # though we don't support users entering rules without conditions, we nevertheless prepare against
-                # them existing in the DB
-                rule_conditions = ()
-            applicable_rules[rule_id] = rule_conditions
-
-        # finally, get all the actual data for each rule
-        rule_query = select([rules.c.id, rules.c.setting, rules.c.value]).where(rules.c.id.in_(applicable_rules))
-        if include_metadata:
-            rule_query.append_column(rules.c.metadata)
-        rule_results = await self.db.fetch_all(rule_query)
+            # finally, get all the actual data for each rule
+            rule_query = select([rules.c.id, rules.c.setting, rules.c.value]).where(rules.c.id.in_(applicable_rules))
+            if include_metadata:
+                rule_query.append_column(rules.c.metadata)
+            rule_results = await self.db.fetch_all(rule_query)
 
         ret = []
         for row in rule_results:
