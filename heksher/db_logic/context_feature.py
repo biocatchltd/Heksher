@@ -61,7 +61,7 @@ class ContextFeatureMixin(DBLogicBase):
         )
         return [row['name'] for row in rows]
 
-    async def get_not_context_features(self, candidates: Iterable[str]) -> AbstractSet[str]:
+    async def get_not_found_context_features(self, candidates: Iterable[str]) -> AbstractSet[str]:
         """
         Filter an iterable to only include strings that are not context features in the DB.
         Args:

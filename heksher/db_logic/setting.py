@@ -12,7 +12,7 @@ from heksher.setting_types import setting_type
 
 
 class SettingMixin(DBLogicBase):
-    async def get_not_settings(self, names: Iterable[str]) -> Collection[str]:
+    async def get_not_found_setting_names(self, names: Iterable[str]) -> Collection[str]:
         """
         Args:
             names: an iterable of potential setting names.

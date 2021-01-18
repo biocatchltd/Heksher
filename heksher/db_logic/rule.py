@@ -84,14 +84,12 @@ class RuleMixin(DBLogicBase):
         # we convert the conditions to a format that they can be queried with an "IN" condition
         condition_tuples = ','.join(f"('{k}','{v}')" for (k, v) in match_conditions.items())
         query_template = f'''
-        SELECT DISTINCT id -- get all ids
+        SELECT DISTINCT id
         FROM (
           SELECT * from rules
           WHERE setting = :setting
-        ) as rules -- only from rules pertaining to the setting
-        -- only rules that have exactly the correct number of conditions
+        ) as rules
         WHERE (SELECT COUNT(*) FROM conditions WHERE rule = rules.id) = :condition_count
-        -- and that all their conditions are among those that we expect
         AND NOT EXISTS (
           SELECT *
           from conditions
@@ -178,15 +176,12 @@ class RuleMixin(DBLogicBase):
         SELECT rules.id, C.context_feature, C.feature_value -- get all the conditions for all the rules
         FROM
         (
-            -- filter out rules for non-applicable settings
             (SELECT * from rules where setting IN ({settings_container})) as rules
-            LEFT JOIN -- we left join so that if we have a rule without conditions, we still retrieve it
+            LEFT JOIN
             conditions as C
             ON rules.id = C.rule
         )
-        -- we want the conditions sorted by hierarchy, so we need to add the context feature index
         LEFT JOIN context_features ON context_features.name = C.context_feature
-        -- our one final condition is to rule out any rule that has a condition we do not expect
         WHERE NOT EXISTS (
           SELECT *
           from conditions

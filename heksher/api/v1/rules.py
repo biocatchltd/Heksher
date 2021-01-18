@@ -133,12 +133,12 @@ async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
     """
     Query settings for rules for a specific set of potential contexts.
     """
-    not_context_features = await app.db_logic.get_not_context_features(input.context_features_options)
+    not_context_features = await app.db_logic.get_not_found_context_features(input.context_features_options)
     if not_context_features:
         return PlainTextResponse(f'the following are not valid context features: {not_context_features}',
                                  status_code=status.HTTP_404_NOT_FOUND)
 
-    not_settings = await app.db_logic.get_not_settings(input.setting_names)
+    not_settings = await app.db_logic.get_not_found_setting_names(input.setting_names)
     if not_settings:
         return PlainTextResponse(f'the following are not setting names: {not_settings}',
                                  status_code=status.HTTP_404_NOT_FOUND)
