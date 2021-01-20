@@ -1,6 +1,6 @@
 from pytest import mark, raises
 
-from heksher.db_logic.util import is_supersequence, inline_sql
+from heksher.db_logic.util import supersequence_new_elements, inline_sql
 
 
 @mark.parametrize('a,b,new', [
@@ -12,10 +12,10 @@ from heksher.db_logic.util import is_supersequence, inline_sql
     ('abcde', 'bcd', 'ae')
 ])
 def test_issupersequence(a, b, new):
-    ss = is_supersequence(a, b)
-    assert ss
+    ss = supersequence_new_elements(a, b)
+    assert ss is not None
     expected_new = tuple((n, a.find(n)) for n in new)
-    assert ss.new_elements == expected_new
+    assert ss == expected_new
 
 
 @mark.parametrize('a,b', [
@@ -25,8 +25,8 @@ def test_issupersequence(a, b, new):
 
 ])
 def test_is_not_supersequence(a, b):
-    ss = is_supersequence(a, b)
-    assert not ss
+    ss = supersequence_new_elements(a, b)
+    assert ss is None
 
 
 @mark.parametrize('x', [

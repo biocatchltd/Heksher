@@ -190,7 +190,9 @@ class RuleMixin(DBLogicBase):
             else:
                 # (no, parameterization doesn't work)
                 condition_tuples = ','.join(
-                    f"({inline_sql(k)},{inline_sql(v)})" for (k, values) in feature_value_options.items() for v in values)
+                    f"({inline_sql(k)},{inline_sql(v)})"
+                    for (k, values) in feature_value_options.items() for v in values
+                )
 
             # (no, parameterization doesn't work)
             settings_container = ','.join(f"'{name}'" for name in applicable_settings)

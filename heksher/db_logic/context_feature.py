@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from heksher.db_logic.logic_base import DBLogicBase
 from heksher.db_logic.metadata import context_features
-from heksher.db_logic.util import is_supersequence
+from heksher.db_logic.util import supersequence_new_elements
 
 logger = getLogger(__name__)
 
@@ -23,8 +23,8 @@ class ContextFeatureMixin(DBLogicBase):
         records = await self.db.fetch_all(query)
         expected = {cf: i for (i, cf) in enumerate(expected_context_features)}
         actual = {row['name']: row['index'] for row in records}
-        super_sequence = is_supersequence(expected_context_features, actual)
-        if not super_sequence:
+        super_sequence = supersequence_new_elements(expected_context_features, actual)
+        if super_sequence is None:
             raise RuntimeError(f'expected context features to be a subsequence of {list(expected)}, '
                                f'actual: {list(actual)}')
         # get all context features that are out place with what we expect
@@ -37,13 +37,13 @@ class ContextFeatureMixin(DBLogicBase):
             WHERE name = :k
             """
             await self.db.execute_many(query, [{'k': k, 'v': expected[k]} for k in misplaced_keys])
-        if super_sequence.new_elements:
+        if super_sequence:
             logger.info('adding new context features', extra={
-                'new_context_features': [element for (element, _) in super_sequence.new_elements]
+                'new_context_features': [element for (element, _) in super_sequence]
             })
             await self.db.execute_many(
                 context_features.insert(),
-                [{'name': name, 'index': index} for (name, index) in super_sequence.new_elements]
+                [{'name': name, 'index': index} for (name, index) in super_sequence]
             )
 
     async def get_context_features(self) -> Sequence[str]:

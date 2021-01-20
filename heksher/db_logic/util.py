@@ -1,30 +1,21 @@
 import re
-from typing import NamedTuple, Collection, Tuple, TypeVar, Generic, Sequence, Hashable, Dict, Union, Literal
+from typing import Collection, Tuple, TypeVar, Sequence, Hashable, Dict, Union
 
 T = TypeVar('T', bound=Hashable)
 
 
 # pytype: disable=not-supported-yet
-
-class SupersequenceResults(NamedTuple, Generic[T]):
-    """
-    An object returned by is_supersequence to denote that the supersequence matches, along with the elements in the
-    supersequence that are missing from the subsequence
-    """
-    new_elements: Collection[Tuple[T, int]]
-
-
-def is_supersequence(supersequence: Sequence[T], subsequence: Collection[T]) \
-        -> Union[SupersequenceResults, Literal[False]]:
+def supersequence_new_elements(supersequence: Sequence[T], subsequence: Collection[T]) \
+        -> Union[Collection[Tuple[T, int]], None]:
     """
     Check whether a sequence is a supersequence of another sequence
     Args:
         supersequence: the sequence to assert is a supersequence
         subsequence: the collection to assert is a subsequence
     Returns:
-        False if the sequences are not super-sub, or SupersequenceResults if they are
+        None if the sequences are not super-sub, or a collection of the new items in the supersequence
     Note:
-        supersequence should be non-repeating
+        supersequence should be non-repeating, and subsequence should be well-ordered
     """
     new_elements: Dict[T, int] = {}
 
@@ -50,13 +41,13 @@ def is_supersequence(supersequence: Sequence[T], subsequence: Collection[T]) \
                 new_elements[element] = i
         else:
             # supersequence is out of elements but subsequence still has some (therefore, it is not a subsequence)
-            return False
+            return None
 
     # subsequence has been consumed, everything left in super is new
     new_elements.update(
         (k, j) for (j, k) in enumerate(supersequence[i + 1:], i + 1)
     )
-    return SupersequenceResults(tuple(new_elements.items()))
+    return tuple(new_elements.items())
 
 
 # pytype: enable=not-supported-yet
@@ -66,7 +57,8 @@ INLINE_VALIDATION_PATTERN = re.compile(r'[a-zA-Z0-9_\s]+')
 
 def inline_sql(x: str) -> str:
     """
-    Wrap a string, that is about to be inlined into an SQL query as a string literal, or raise an exception if it invalid
+    Wrap a string, that is about to be inlined into an SQL query as a string literal, or raise an exception if it is
+    invalid
     Args:
         x: The string to be validated
     Returns:
