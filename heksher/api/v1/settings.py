@@ -47,8 +47,10 @@ class DeclareSettingInput(ORJSONModel):
 class DeclareSettingOutput(ORJSONModel):
     created: bool = Field(description="whether the fields was newly created by the request")
     changed: List[str] = Field(description="a list of fields that were changed by the request")
-    incomplete: Dict[str, Any] = Field(description="a mapping of fields that were declared with incomplete data, with"
-                                                   " the complete data (which remains unchanged)")
+    incomplete: Dict[str, Any] = Field(
+        description="a mapping of fields that were declared with incomplete data. The values in the mapping represent"
+                    " the complete data with (which remains unchanged)"
+    )
 
 
 @router.put('/declare', response_model=DeclareSettingOutput)
@@ -63,7 +65,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
         if not_cf:
             return PlainTextResponse(f'{not_cf} are not acceptable context features',
                                      status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
-        logger.warning('creating new setting', extra={'setting_name': new_setting.name})
+        logger.info('creating new setting', extra={'setting_name': new_setting.name})
         await app.db_logic.add_setting(new_setting)
         return DeclareSettingOutput(created=True, changed=[], incomplete={})
 
@@ -82,8 +84,8 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
             return PlainTextResponse(f'{not_cf} are not acceptable context features',
                                      status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
         changed.append('configurable_features')
-        logger.warning("adding new configurable features to setting",
-                       extra={'setting_name': new_setting.name, 'new_configurable_features': new_configurable_features})
+        logger.info("adding new configurable features to setting",
+                    extra={'setting_name': new_setting.name, 'new_configurable_features': new_configurable_features})
 
     missing_cf = existing_setting_cfs - new_setting_cfs
     if missing_cf:
@@ -107,13 +109,10 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
         k for (k, v) in existing.metadata.items() if (k in new_setting.metadata and new_setting.metadata[k] != v)
     )
     if metadata_changed:
-        logger.warning('changing setting metadata',
-                       extra={'setting_name': new_setting.name, 'new_metadata': new_setting.metadata})
+        logger.info('changing setting metadata',
+                    extra={'setting_name': new_setting.name, 'new_metadata': new_setting.metadata})
         changed.extend('metadata.' + k for k in sorted(metadata_changed))
         to_change['metadata'] = str(orjson.dumps(new_setting.metadata), 'utf-8')
-
-    if changed:
-        logger.warning('setting fields changed', extra={'setting': input.name, 'changed': changed})
 
     if to_change or new_configurable_features:
         await app.db_logic.update_setting(input.name, to_change, new_configurable_features)

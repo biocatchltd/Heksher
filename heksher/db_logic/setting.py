@@ -12,12 +12,14 @@ from heksher.db_logic.metadata import settings, configurable, context_features
 from heksher.setting import Setting
 from heksher.setting_types import setting_type
 
+
 class SettingSpec(NamedTuple):
     name: str
     raw_type: Optional[str]
     default_value: Optional[Any]
     metadata: Optional[Dict[str, Any]]
     configurable_features: Optional[List[str]]
+
 
 class SettingMixin(DBLogicBase):
     async def get_not_found_setting_names(self, names: Iterable[str]) -> Collection[str]:

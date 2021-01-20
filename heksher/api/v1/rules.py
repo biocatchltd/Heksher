@@ -57,7 +57,7 @@ async def search_rule(input: SearchRuleInput, app: HeksherApp = application):
 
 
 class AddRuleInput(ORJSONModel):
-    setting: SettingName = Field(description="the setting name the rule should apply ti")
+    setting: SettingName = Field(description="the setting name the rule should apply to")
     feature_values: Dict[ContextFeatureName, ContextFeatureValue] = \
         Field(description="the exact-match conditions of the rule")
     value: Any = Field(description="the value of the setting in contexts that match the rule")

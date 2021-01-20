@@ -89,13 +89,9 @@ class IntegerPrimitiveSettingType(PrimitiveSettingType):
             name: The name of the setting type
         """
         super().__init__((int, float))
-        self.name = name
-
-    def __eq__(self, other):
-        return type(self) is type(other) and self.types == other.types and self.name == other.name
 
     def __str__(self):
-        return self.name
+        return 'int'
 
     def validate(self, x) -> bool:
         return super().validate(x) and x % 1 == 0

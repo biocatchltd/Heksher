@@ -16,7 +16,7 @@ router = APIRouter(prefix='/context_features')
 
 
 @router.get('', response_model=GetContextFeaturesResponse)
-async def get_context_features(app: HeksherApp = application):
+async def check_context_features(app: HeksherApp = application):
     """
     Get a listing of all the context features, in their hierarchical order.
     """

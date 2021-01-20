@@ -138,7 +138,8 @@ class RuleMixin(DBLogicBase):
         return rule_id
 
     async def query_rules(self, setting_names: List[str], feature_value_options: Optional[Dict[str, List[str]]],
-                          cache_time: Optional[datetime], include_metadata: bool) -> Dict[str, List[InnerRuleSpec]]:
+                          setting_touch_time_cutoff: Optional[datetime],
+                          include_metadata: bool) -> Dict[str, List[InnerRuleSpec]]:
         """
         Search the rules of multiple settings
 
@@ -146,20 +147,20 @@ class RuleMixin(DBLogicBase):
             setting_names: The names of the settings to query.
             feature_value_options: The options for each context feature. Rules that cannot match with these options are
              discounted. If None, all rules are counted
-            cache_time: If provided, will discount all rules pertaining to settings that have not been updated since
-             this time.
+            setting_touch_time_cutoff: If provided, will discount all rules pertaining to settings that have not been
+             updated since  this time.
             include_metadata: Whether to retrieve and include the metadata of each rule in the result.
 
         Returns:
             A mapping of non-filtered settings to rules
 
         """
-        if cache_time:
+        if setting_touch_time_cutoff:
             settings_results = await self.db.fetch_all(
                 select([settings.c.name])
                 .where(
                     settings.c.name.in_(setting_names)
-                    & (settings.c.last_touch_time >= cache_time)
+                    & (settings.c.last_touch_time >= setting_touch_time_cutoff)
                 )
             )
             applicable_settings = [row['name'] for row in settings_results]
