@@ -1,6 +1,6 @@
 from datetime import datetime
 from logging import getLogger
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 
 import orjson
 from fastapi import APIRouter
@@ -156,16 +156,53 @@ async def get_setting(name: str, app: HeksherApp = application):
                             type=str(setting.type), default_value=setting.default_value, metadata=setting.metadata)
 
 
+class GetSettingsInput(ORJSONModel):
+    include_additional_data: bool = Field(
+        False, description='whether to include additional data about each setting'
+    )
+
+
 class GetSettingsOutput(ORJSONModel):
-    settings: List[str] = Field(description="A list of all the setting names")
+    class Setting(ORJSONModel):
+        name: str = Field(description="The name of the setting")
+
+    settings: List[Setting] = Field(description="A list of all the setting, sorted by name")
 
 
-@router.get('', response_model=GetSettingsOutput)
-async def get_settings(app: HeksherApp = application):
+class GetSettingOutputWithData(ORJSONModel):
+    class Setting(GetSettingsOutput.Setting):
+        configurable_features: List[str] = Field(
+            description="a list of the context features the setting can be configured"
+                        " by")
+        type: str = Field(description="the type of the setting")
+        default_value: Any = Field(description="the default value of the setting")
+        metadata: Dict[str, Any] = Field(description="additional metadata of the setting")
+
+    settings: List[Setting] = Field(description="A list of all the setting, sorted by name")
+
+
+@router.get('', response_model=Union[GetSettingOutputWithData, GetSettingsOutput])
+async def get_settings(input: GetSettingsInput, app: HeksherApp = application):
     """
     List all the settings in the service
     """
-    return GetSettingsOutput(settings=sorted(await app.db_logic.get_settings()))
+    results = await app.db_logic.get_settings(input.include_additional_data)
+    if input.include_additional_data:
+        return GetSettingOutputWithData(settings=[
+            GetSettingOutputWithData.Setting(
+                name=spec.name,
+                configurable_features=spec.configurable_features,
+                type=spec.raw_type,
+                default_value=spec.default_value,
+                metadata=spec.metadata
+            ) for spec in results
+        ])
+    else:
+        return GetSettingsOutput(settings=[
+            GetSettingsOutput.Setting(
+                name=spec.name
+            ) for spec in results
+        ])
 
 
 v1_router.include_router(router)

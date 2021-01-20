@@ -206,7 +206,8 @@ def test_delete_setting_missing(size_limit_setting, app_client):
     assert res.status_code == 404
 
 
-def test_get_settings(app_client):
+@mark.parametrize('additional_data', [False, None])
+def test_get_settings(app_client, additional_data):
     def mk_setting(name: str):
         res = app_client.put('api/v1/settings/declare', data=json.dumps({
             'name': name,
@@ -224,8 +225,50 @@ def test_get_settings(app_client):
     mk_setting('c')
     mk_setting('b')
 
-    res = app_client.get('api/v1/settings')
+    request_data = {}
+    if additional_data is not None:
+        request_data['include_additional_data'] = additional_data
+
+    res = app_client.get('api/v1/settings', data=json.dumps(request_data))
     res.raise_for_status()
     assert res.json() == {
-        'settings': ['a', 'b', 'c']
+        'settings': [
+            {'name': 'a'},
+            {'name': 'b'},
+            {'name': 'c'},
+        ]
+    }
+
+
+def test_get_settings_additional_data(app_client):
+    def mk_setting(name: str, type: str):
+        res = app_client.put('api/v1/settings/declare', data=json.dumps({
+            'name': name,
+            'configurable_features': ['theme', 'user'],
+            'type': type
+        }))
+        res.raise_for_status()
+        assert res.json() == {
+            'created': True,
+            'changed': [],
+            'incomplete': {}
+        }
+
+    mk_setting('a', 'int')
+    mk_setting('c', 'float')
+    mk_setting('b', 'str')
+
+    res = app_client.get('api/v1/settings', data=json.dumps({
+        'include_additional_data': True
+    }))
+    res.raise_for_status()
+    assert res.json() == {
+        'settings': [
+            {'name': 'a', 'type': 'int', 'configurable_features': ['user', 'theme'],
+             'metadata': {}, 'default_value': None},
+            {'name': 'b', 'type': 'str', 'configurable_features': ['user', 'theme'],
+             'metadata': {}, 'default_value': None},
+            {'name': 'c', 'type': 'float', 'configurable_features': ['user', 'theme'],
+             'metadata': {}, 'default_value': None},
+        ]
     }

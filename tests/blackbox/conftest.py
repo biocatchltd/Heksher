@@ -1,3 +1,6 @@
+import sys
+from subprocess import run
+
 from docker import DockerClient
 from pytest import fixture
 from starlette.testclient import TestClient
@@ -7,13 +10,6 @@ from heksher.main import app
 
 # apparently this works
 from tests.blackbox.test_v1api_settings import size_limit_setting  # noqa: F401
-
-import sys
-
-sys.path.append('alembic')
-del sys
-
-from from_scratch import create_all  # noqa: E402
 
 
 @fixture(scope='session')
@@ -37,7 +33,8 @@ def purge_sql(sql_service):
         GRANT ALL ON SCHEMA public TO {sql_service.user};
         GRANT ALL ON SCHEMA public TO public;
         ''')
-    create_all(sql_service.local_connection_string())
+    #create_all(sql_service.local_connection_string())
+    run([sys.executable, 'alembic/from_scratch.py', sql_service.local_connection_string()])
     yield
 
 

@@ -13,21 +13,18 @@ from heksher.db_logic.logic_base import DBLogicBase
 from heksher.db_logic.metadata import rules, conditions, settings, context_features
 
 
-# These two classes should be used in the context of db logic api only
-
-class QueryResult(NamedTuple):
-    """
-    The result of a rule query
-    """
-    applicable_settings: List[str]
-    rules: List[RuleSpec]
-
-
+# This class should be used in the context of db logic api only
 class RuleSpec(NamedTuple):
     """
     A single rule that results from a rule query or lookup
     """
     setting: str
+    value: Any
+    feature_values: Sequence[Tuple[str, str]]
+    metadata: Optional[Dict[str, Any]]
+
+
+class InnerRuleSpec(NamedTuple):
     value: Any
     feature_values: Sequence[Tuple[str, str]]
     metadata: Optional[Dict[str, Any]]
@@ -140,21 +137,21 @@ class RuleMixin(DBLogicBase):
             )
         return rule_id
 
-    async def query_rules(self, setting_names: List[str], feature_value_options: Dict[str, List[str]],
-                          cache_time: Optional[datetime], include_metadata: bool) -> QueryResult:
+    async def query_rules(self, setting_names: List[str], feature_value_options: Optional[Dict[str, List[str]]],
+                          cache_time: Optional[datetime], include_metadata: bool) -> Dict[str, List[InnerRuleSpec]]:
         """
         Search the rules of multiple settings
 
         Args:
             setting_names: The names of the settings to query.
             feature_value_options: The options for each context feature. Rules that cannot match with these options are
-             discounted.
+             discounted. If None, all rules are counted
             cache_time: If provided, will discount all rules pertaining to settings that have not been updated since
              this time.
             include_metadata: Whether to retrieve and include the metadata of each rule in the result.
 
         Returns:
-            A QueryResult
+            A mapping of non-filtered settings to rules
 
         """
         if cache_time:
@@ -174,7 +171,19 @@ class RuleMixin(DBLogicBase):
             applicable_rules = {}
             rule_results = []
         else:
-            condition_tuples = ','.join(f"('{k}','{v}')" for (k, values) in feature_value_options.items() for v in values)
+            if feature_value_options is None:
+                # match all
+                condition_tuples = '(null, null)'
+                # this is a trick to make all rules match
+                # x <> null == null, since this is in the WHERE clause, the sub-query will be empty. And since we only
+                # discount rules with non-empty subqueries, no rules will be discounted
+            elif not feature_value_options:
+                # get an empty list
+                condition_tuples = "select * from (values ('','')) as T(x,y) where x = '-'"
+            else:
+                condition_tuples = ','.join(
+                    f"('{k}','{v}')" for (k, values) in feature_value_options.items() for v in values)
+
             settings_container = ','.join(f"'{name}'" for name in applicable_settings)
             query = f"""
             SELECT rules.id, C.context_feature, C.feature_value -- get all the conditions for all the rules
@@ -206,16 +215,28 @@ class RuleMixin(DBLogicBase):
                 applicable_rules[rule_id] = rule_conditions
 
             # finally, get all the actual data for each rule
-            rule_query = select([rules.c.id, rules.c.setting, rules.c.value]).where(rules.c.id.in_(applicable_rules))
+            rule_query = (
+                select([rules.c.id, rules.c.setting, rules.c.value])
+                .where(rules.c.id.in_(applicable_rules))
+                .order_by(rules.c.setting)
+            )
             if include_metadata:
                 rule_query.append_column(rules.c.metadata)
             rule_results = await self.db.fetch_all(rule_query)
 
-        ret = []
-        for row in rule_results:
-            rule = RuleSpec(row['setting'],
-                            orjson.loads(row['value']),
-                            applicable_rules[row['id']],
-                            orjson.loads(row['metadata']) if include_metadata else None)
-            ret.append(rule)
-        return QueryResult(applicable_settings, ret)
+        ret = {}
+        missing_settings = set(applicable_settings)
+        for setting, rows in groupby(rule_results, key=itemgetter('setting')):
+            rule_list = [
+                InnerRuleSpec(
+                    orjson.loads(row['value']),
+                    applicable_rules[row['id']],
+                    orjson.loads(row['metadata']) if include_metadata else None,
+                )
+                for row in rows
+            ]
+            ret[setting] = rule_list
+            missing_settings.remove(setting)
+        for setting in missing_settings:
+            ret[setting] = []
+        return ret

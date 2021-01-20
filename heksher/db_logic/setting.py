@@ -1,6 +1,8 @@
+from _operator import itemgetter
 from asyncio import gather
 from datetime import datetime
-from typing import Optional, Any, Mapping, Collection, List, Iterable
+from itertools import groupby
+from typing import Optional, Any, Mapping, Collection, List, Iterable, NamedTuple, Dict
 
 import orjson
 from sqlalchemy import select, join
@@ -10,6 +12,12 @@ from heksher.db_logic.metadata import settings, configurable, context_features
 from heksher.setting import Setting
 from heksher.setting_types import setting_type
 
+class SettingSpec(NamedTuple):
+    name: str
+    raw_type: Optional[str]
+    default_value: Optional[Any]
+    metadata: Optional[Dict[str, Any]]
+    configurable_features: Optional[List[str]]
 
 class SettingMixin(DBLogicBase):
     async def get_not_found_setting_names(self, names: Iterable[str]) -> Collection[str]:
@@ -143,10 +151,41 @@ class SettingMixin(DBLogicBase):
             SELECT COUNT(*) FROM n;
             """, {'name': name})) == 1
 
-    async def get_settings(self) -> List[str]:
+    async def get_settings(self, full_data) -> List[SettingSpec]:
         """
         Returns:
             A list of all setting names in the DB
         """
-        records = await self.db.fetch_all(select([settings.c.name]))
-        return [row['name'] for row in records]
+        select_query = select([settings.c.name]).order_by(settings.c.name)
+        if full_data:
+            select_query.append_column(settings.c.type)
+            select_query.append_column(settings.c.default_value)
+            select_query.append_column(settings.c.metadata)
+
+        if full_data:
+            records, configurable_rows = await gather(
+                self.db.fetch_all(select_query),
+                self.db.fetch_all(
+                    select([configurable.c.setting, configurable.c.context_feature])
+                    .select_from(join(configurable, context_features,
+                                      configurable.c.context_feature == context_features.c.name))
+                    .order_by(configurable.c.setting, context_features.c.index)
+                )
+            )
+            configurables = {
+                setting: [row['context_feature'] for row in rows]
+                for (setting, rows) in groupby(configurable_rows, key=itemgetter('setting'))
+            }
+        else:
+            records = await self.db.fetch_all(select_query)
+            configurables = {}
+
+        return [
+            SettingSpec(
+                row['name'],
+                row['type'] if full_data else None,
+                orjson.loads(row['default_value']) if full_data else None,
+                orjson.loads(row['metadata']) if full_data else None,
+                configurables[row['name']] if full_data else None
+            ) for row in records
+        ]

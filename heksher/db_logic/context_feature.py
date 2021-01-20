@@ -1,4 +1,5 @@
-from logging import getLogger
+import sys
+from logging import getLogger, Logger
 from typing import Sequence, Iterable, AbstractSet
 
 from sqlalchemy import select
@@ -8,7 +9,6 @@ from heksher.db_logic.metadata import context_features
 from heksher.db_logic.util import is_supersequence
 
 logger = getLogger(__name__)
-
 
 class ContextFeatureMixin(DBLogicBase):
     async def ensure_context_features(self, expected_context_features: Sequence[str]):
@@ -21,11 +21,6 @@ class ContextFeatureMixin(DBLogicBase):
         """
         query = select([context_features.c.name, context_features.c.index]).order_by(context_features.c.index)
         records = await self.db.fetch_all(query)
-        if not records:
-            query = context_features.insert()
-            values = [{'name': cf, 'index': i} for (i, cf) in enumerate(expected_context_features)]
-            await self.db.execute_many(query, values)
-            return
         expected = {cf: i for (i, cf) in enumerate(expected_context_features)}
         actual = {row['name']: row['index'] for row in records}
         super_sequence = is_supersequence(expected_context_features, actual)

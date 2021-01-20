@@ -14,10 +14,11 @@ pydantic = "^1.7.0"
 databases = {version="^0.4.1", extras=['postgresql']}
 uvicorn = "^0.13.2"
 SQLAlchemy = "^1.3.22"
-envolved = "^0.2.0"
+envolved = "^0.3.0"
 
 alembic = {version="^1.4.3", optional=true}
 psycopg2 = {version="^2.8.6", optional=true}
+aiologstash = {version="^2.0.0", optional=true}
 
 [tool.poetry.dev-dependencies]
 pytest-asyncio = "*"
@@ -29,6 +30,7 @@ yellowbox = {extras = ["postgresql"], version = "^0.4.0"}
 
 [tool.poetry.extras]
 alembic = ["alembic", "psycopg2"]
+logstash = ["aiologstash"]
 
 [build-system]
 requires = ["poetry>=1.0.0"]

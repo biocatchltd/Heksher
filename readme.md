@@ -73,12 +73,10 @@ arguments:
 * include_metadata: optional boolean (default False). If true, all rules are also provided with their metadata.
 
 output:
-* rules: A list of dicts, each dict representing a rule, having the keys:
-    * setting 
+* rules: A dict, mapping each setting to a list of dicts, each dict representing a rule, having the keys:
     * value
     * context_features
     * metadata. only present if “include_metadata” is true.
-* included_settings: the settings that were not filtered out of the query
 
 Clients should use this route at regular intervals, updating the rules for each service, to be queried in real-time from
 within the client's memory. Clients are encourage to store the rules in a nested mapping, the rules for `cache_size` in

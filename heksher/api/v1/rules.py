@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Dict, Optional, Tuple, Union, Any
+from typing import List, Dict, Optional, Tuple, Union, Any, Literal
 
 from fastapi import APIRouter
 from pydantic import Field, validator  # pytype: disable=import-error
@@ -98,34 +98,39 @@ async def add_rule(input: AddRuleInput, app: HeksherApp = application):
 
 class QueryRulesInput(ORJSONModel):
     setting_names: List[SettingName] = Field(description="a list of setting names to return the rules for")
-    context_features_options: Dict[ContextFeatureName, List[ContextFeatureValue]] = Field(
+    context_features_options: Union[Dict[ContextFeatureName, List[ContextFeatureValue]], Literal['*']] = Field(
         description="a mapping of context features and possible values. Any rule with an exact-match condition not in"
-                    " this mapping will not be returned"
+                    " this mapping will not be returned. Optionally can be set to '*' to return all rules"
     )
     cache_time: Optional[datetime] = Field(None, description="if provided, any settings that have not been changed"
                                                              " since this time will be ignored")
     include_metadata: bool = Field(False, description="whether to load and include the metadata of each rule in"
                                                       " the results")
 
-
-class Rule(ORJSONModel):
-    setting: str = Field(description="the setting the rule applies to")
-    value: Any = Field(description="the value of the setting in contexts where the rule matches")
-    context_features: List[Tuple[str, str]] = Field(description="a list of exact-match conditions for the rule")
-
-
-class RuleWithMetadata(Rule):
-    metadata: Dict[str, Any] = Field(description="the metadata of the rule, if requested")
+    @validator('context_features_options')
+    def wildcard(cls, v):
+        if v == '*':
+            return None
+        return v
 
 
 class QueryRulesOutput(ORJSONModel):
-    rules: List[Rule] = Field(description="the rules that matched the query")
-    included_settings: List[str] = Field(description="the settings that were not filtered out of the query")
+    class Rule(ORJSONModel):
+        value: Any = Field(description="the value of the setting in contexts where the rule matches")
+        context_features: List[Tuple[str, str]] = Field(
+            description="a list of exact-match conditions for the rule, in hierarchical order"
+        )
+
+    rules: Dict[str, List[Rule]] = Field(description="a list of rules for each setting that was not filtered out")
 
 
 class QueryRulesOutputWithMetadata(ORJSONModel):
-    rules: List[RuleWithMetadata] = Field(description="the rules that matched the query")
-    included_settings: List[str] = Field(description="the settings that were not filtered out of the query")
+    class Rule(QueryRulesOutput.Rule):
+        metadata: Dict[str, Any] = Field(description="the metadata of the rule, if requested")
+
+    rules: Dict[str, List[Rule]] = Field(
+        description="a list of rules for each setting that was not filtered out"
+    )
 
 
 @router.get('/query', response_model=Union[QueryRulesOutputWithMetadata, QueryRulesOutput])
@@ -133,10 +138,11 @@ async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
     """
     Query settings for rules for a specific set of potential contexts.
     """
-    not_context_features = await app.db_logic.get_not_found_context_features(input.context_features_options)
-    if not_context_features:
-        return PlainTextResponse(f'the following are not valid context features: {not_context_features}',
-                                 status_code=status.HTTP_404_NOT_FOUND)
+    if input.context_features_options is not None:
+        not_context_features = await app.db_logic.get_not_found_context_features(input.context_features_options)
+        if not_context_features:
+            return PlainTextResponse(f'the following are not valid context features: {not_context_features}',
+                                     status_code=status.HTTP_404_NOT_FOUND)
 
     not_settings = await app.db_logic.get_not_found_setting_names(input.setting_names)
     if not_settings:
@@ -145,24 +151,25 @@ async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
 
     query_result = await app.db_logic.query_rules(input.setting_names, input.context_features_options,
                                                   input.cache_time, input.include_metadata)
-    rules = query_result.rules
-    settings = query_result.applicable_settings
 
     if input.include_metadata:
         return QueryRulesOutputWithMetadata(
-            included_settings=settings,
-            rules=[
-                RuleWithMetadata(setting=rule.setting, value=rule.value, context_features=rule.feature_values,
-                                 metadata=rule.metadata)
-                for rule in rules
-            ])
+            rules={
+                setting: [
+                    QueryRulesOutputWithMetadata.Rule(
+                        value=rule.value, context_features=rule.feature_values, metadata=rule.metadata
+                    )
+                    for rule in rules
+                ] for setting, rules in query_result.items()
+            })
     else:
         return QueryRulesOutput(
-            included_settings=settings,
-            rules=[
-                Rule(setting=rule.setting, value=rule.value, context_features=rule.feature_values)
-                for rule in rules
-            ])
+            rules={
+                setting: [
+                    QueryRulesOutput.Rule(value=rule.value, context_features=rule.feature_values)
+                    for rule in rules
+                ] for setting, rules in query_result.items()
+            })
 
 
 class GetRuleOutput(ORJSONModel):

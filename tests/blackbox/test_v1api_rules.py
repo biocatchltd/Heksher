@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from itertools import chain
 
 from pytest import fixture, mark
 
@@ -182,17 +183,19 @@ def test_query_rules(metadata: bool, app_client, setup_rules):
     }))
 
     expected = {
-        'rules':
-            [
-                {'setting': 'a', 'value': 1, 'context_features': [['trust', 'full']]},
-                {'setting': 'a', 'value': 2, 'context_features': [['theme', 'black']]},
-                {'setting': 'a', 'value': 3, 'context_features': [['trust', 'full'], ['theme', 'black']]},
-                {'setting': 'b', 'value': 5, 'context_features': [['trust', 'part']]}
+        'rules': {
+            'a': [
+                {'context_features': [['trust', 'full']], 'value': 1},
+                {'context_features': [['theme', 'black']], 'value': 2},
+                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3}
             ],
-        'included_settings': ['a', 'b'],
+            'b': [
+                {'context_features': [['trust', 'part']], 'value': 5}
+            ]
+        }
     }
     if metadata:
-        for rule in expected['rules']:
+        for rule in chain.from_iterable(expected['rules'].values()):
             rule['metadata'] = {'test': 'yes'}
 
     assert res.json() == expected
@@ -212,16 +215,16 @@ def test_query_rules_time_cache(metadata: bool, app_client, setup_rules, mk_rule
     }))
 
     expected = {
-        'rules':
-            [
-                {'setting': 'a', 'value': 1, 'context_features': [['trust', 'full']]},
-                {'setting': 'a', 'value': 2, 'context_features': [['theme', 'black']]},
-                {'setting': 'a', 'value': 3, 'context_features': [['trust', 'full'], ['theme', 'black']]},
+        'rules': {
+            'a': [
+                {'context_features': [['trust', 'full']], 'value': 1},
+                {'context_features': [['theme', 'black']], 'value': 2},
+                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3}
             ],
-        'included_settings': ['a'],
+        }
     }
     if metadata:
-        for rule in expected['rules']:
+        for rule in chain.from_iterable(expected['rules'].values()):
             rule['metadata'] = {'test': 'yes'}
 
     assert res.json() == expected
@@ -239,9 +242,116 @@ def test_query_rules_fully_cached(metadata: bool, app_client, setup_rules, mk_ru
     }))
 
     expected = {
-        'rules': [],
-        'included_settings': [],
+        'rules': {}
     }
+
+    assert res.json() == expected
+
+
+@mark.parametrize('metadata', [False, True])
+def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, sql_service):
+    with sql_service.connection() as connection:
+        connection.execute("""
+        INSERT INTO rules (setting, value, metadata) VALUES ('b', '10', '{"test": "yes"}')
+        """)
+
+    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+        'setting_names': ['a', 'b'],
+        'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
+        'include_metadata': metadata
+    }))
+
+    expected = {
+        'rules': {
+            'a': [
+                {'context_features': [['trust', 'full']], 'value': 1},
+                {'context_features': [['theme', 'black']], 'value': 2},
+                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3}
+            ],
+            'b': [
+                {'context_features': [['trust', 'part']], 'value': 5},
+                {'context_features': [], 'value': 10}
+            ]
+        }
+    }
+    if metadata:
+        for rule in chain.from_iterable(expected['rules'].values()):
+            rule['metadata'] = {'test': 'yes'}
+
+    assert res.json() == expected
+
+
+@mark.parametrize('metadata', [False, True])
+def test_query_rules_nooptions(metadata: bool, app_client, setup_rules):
+    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+        'setting_names': ['a'],
+        'context_features_options': {},
+        'include_metadata': metadata
+    }))
+
+    expected = {
+        'rules': {
+            'a': []
+        }
+    }
+
+    assert res.json() == expected
+
+
+@mark.parametrize('metadata', [False, True])
+def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, setup_rules, sql_service):
+    with sql_service.connection() as connection:
+        connection.execute("""
+        INSERT INTO rules (setting, value, metadata) VALUES ('b', '10', '{"test": "yes"}')
+        """)
+
+    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+        'setting_names': ['a', 'b'],
+        'context_features_options': {},
+        'include_metadata': metadata
+    }))
+
+    expected = {
+        'rules': {
+            'a': [],
+            'b': [
+                {'context_features': [], 'value': 10},
+            ]
+        }
+    }
+
+    if metadata:
+        for rule in chain.from_iterable(expected['rules'].values()):
+            rule['metadata'] = {'test': 'yes'}
+
+    assert res.json() == expected
+
+
+@mark.parametrize('metadata', [False, True])
+def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
+    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+        'setting_names': ['a', 'b'],
+        'context_features_options': '*',
+        'include_metadata': metadata
+    }))
+
+    expected = {
+        'rules': {
+            'a': [
+                {'context_features': [['trust', 'full']], 'value': 1},
+                {'context_features': [['theme', 'black']], 'value': 2},
+                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3},
+                {'context_features': [['user', 'admin'], ['theme', 'black']], 'value': 7}
+            ],
+            'b': [
+                {'context_features': [['trust', 'none']], 'value': 4},
+                {'context_features': [['trust', 'part']], 'value': 5}
+            ]
+        }
+    }
+    if metadata:
+        for rule in chain.from_iterable(expected['rules'].values()):
+            rule['metadata'] = {'test': 'yes'}
 
     assert res.json() == expected
 
@@ -262,32 +372,10 @@ def test_query_rules_bad_settings(app_client, setup_rules):
     assert 400 <= res.status_code <= 499
 
 
-@mark.parametrize('metadata', [False, True])
-def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, sql_service):
-    with sql_service.connection() as connection:
-        connection.execute("""
-        INSERT INTO rules (setting, value, metadata) VALUES ('b', '10', '{"test": "yes"}')
-        """)
-
+@mark.parametrize('options', [None, '**', 'wildcard'])
+def test_query_rules_bad_options(app_client, setup_rules, options):
     res = app_client.get('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
-        'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
-        'include_metadata': metadata
+        'setting_names': ['a'],
+        'context_features_options': options,
     }))
-
-    expected = {
-        'rules':
-            [
-                {'setting': 'a', 'value': 1, 'context_features': [['trust', 'full']]},
-                {'setting': 'a', 'value': 2, 'context_features': [['theme', 'black']]},
-                {'setting': 'a', 'value': 3, 'context_features': [['trust', 'full'], ['theme', 'black']]},
-                {'setting': 'b', 'value': 5, 'context_features': [['trust', 'part']]},
-                {'setting': 'b', 'value': 10, 'context_features': []},
-            ],
-        'included_settings': ['a', 'b'],
-    }
-    if metadata:
-        for rule in expected['rules']:
-            rule['metadata'] = {'test': 'yes'}
-
-    assert res.json() == expected
+    assert res.status_code == 422, res.content
