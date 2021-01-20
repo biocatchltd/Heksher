@@ -1,6 +1,6 @@
-from pytest import mark
+from pytest import mark, raises
 
-from heksher.db_logic.util import is_supersequence
+from heksher.db_logic.util import is_supersequence, inline_sql
 
 
 @mark.parametrize('a,b,new', [
@@ -27,3 +27,24 @@ def test_issupersequence(a, b, new):
 def test_is_not_supersequence(a, b):
     ss = is_supersequence(a, b)
     assert not ss
+
+
+@mark.parametrize('x', [
+    "a'",
+    "' OR '1' = '1",
+    "-- DROP TABLE x",
+    ''
+])
+def test_invalid_inline_sql(x):
+    with raises(AssertionError):
+        inline_sql(x)
+
+
+@mark.parametrize('x', [
+    "a",
+    "abra cadabra",
+    'DROP TABLE x',
+    "DROP TABLE x at 9 oclock"
+])
+def test_valid_inline_sql(x):
+    assert inline_sql(x) == "'" + x + "'"

@@ -14,6 +14,9 @@ from heksher.db_logic.metadata import rules, conditions, settings, context_featu
 
 
 # This class should be used in the context of db logic api only
+from heksher.db_logic.util import inline_sql
+
+
 class RuleSpec(NamedTuple):
     """
     A single rule that results from a rule query or lookup
@@ -79,7 +82,10 @@ class RuleMixin(DBLogicBase):
         """
         condition_count = len(match_conditions)
         # we convert the conditions to a format that they can be queried with an "IN" condition
-        condition_tuples = ','.join(f"('{k}','{v}')" for (k, v) in match_conditions.items())
+        # (no, parameterization doesn't work)
+        condition_tuples = ','.join(
+            f"({inline_sql(k)},{inline_sql(v)})" for (k, v) in match_conditions.items()
+        )
         query_template = f'''
         SELECT DISTINCT id
         FROM (
@@ -182,9 +188,11 @@ class RuleMixin(DBLogicBase):
                 # get an empty list
                 condition_tuples = "select * from (values ('','')) as T(x,y) where x = '-'"
             else:
+                # (no, parameterization doesn't work)
                 condition_tuples = ','.join(
-                    f"('{k}','{v}')" for (k, values) in feature_value_options.items() for v in values)
+                    f"({inline_sql(k)},{inline_sql(v)})" for (k, values) in feature_value_options.items() for v in values)
 
+            # (no, parameterization doesn't work)
             settings_container = ','.join(f"'{name}'" for name in applicable_settings)
             query = f"""
             SELECT rules.id, C.context_feature, C.feature_value -- get all the conditions for all the rules

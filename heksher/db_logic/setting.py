@@ -9,6 +9,7 @@ from sqlalchemy import select, join
 
 from heksher.db_logic.logic_base import DBLogicBase
 from heksher.db_logic.metadata import settings, configurable, context_features
+from heksher.db_logic.util import inline_sql
 from heksher.setting import Setting
 from heksher.setting_types import setting_type
 
@@ -31,8 +32,8 @@ class SettingMixin(DBLogicBase):
             A collection of names that have no settings with that name.
 
         """
-        # make the names usable as VALUES entries
-        names = ', '.join(f"('{n}')" for n in names)
+        # make the names usable as VALUES entries (no, parameterization doesn't work)
+        names = ', '.join(f"({inline_sql(n)})" for n in names)
 
         query = f"""
         SELECT n
