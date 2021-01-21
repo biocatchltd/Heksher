@@ -12,7 +12,7 @@ RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-
     ln -s /opt/poetry/bin/poetry && \
     poetry config virtualenvs.create false
 COPY pyproject.toml poetry.lock* ./
-RUN poetry install --no-dev --no-root -E alembic -E logstash
+RUN poetry install --no-dev --no-root -E alembic
 
 COPY . /usr/src/app/heksher
 
