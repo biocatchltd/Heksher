@@ -1,11 +1,14 @@
+import re
 from asyncio import wait_for
 from logging import getLogger, INFO
 
+from aiologstash import create_tcp_handler
 from databases import Database
 from envolved import EnvVar, Schema
 from envolved.parsers import CollectionParser
 from fastapi import FastAPI
 
+from heksher._version import __version__
 from heksher.db_logic import DBLogic
 
 connection_string = EnvVar('HEKSHER_DB_CONNECTION_STRING', type=str)
@@ -15,6 +18,7 @@ startup_context_features = EnvVar('HEKSHER_STARTUP_CONTEXT_FEATURES', type=Colle
 class LogstashSettingSchema(Schema):
     host: str = EnvVar()
     port: int = EnvVar()
+    tags = EnvVar(type=CollectionParser.pair_wise_delimited(re.compile(r'\s'), ':', str, str))
 
 
 logstash_settings = EnvVar('HEKSHER_LOGSTASH_', default=None, type=LogstashSettingSchema)
@@ -33,15 +37,12 @@ class HeksherApp(FastAPI):
     async def startup(self):
         settings = logstash_settings.get()
         if settings is not None:
-            try:
-                from aiologstash import create_tcp_handler
-            except ImportError as ex:
-                raise RuntimeError('logstash settings are defined but aiologstash is not installed, make sure to'
-                                   ' install heksher with the "logstash" extra') from ex
-
-            handler = await create_tcp_handler(settings.host, settings.port)
-            getLogger('').addHandler(handler)
-            getLogger('').setLevel(INFO)
+            handler = await create_tcp_handler(settings.host, settings.port, extra={
+                'heksher_version': __version__,
+                **settings.tags
+            })
+            getLogger('heksher').addHandler(handler)
+            getLogger('heksher').setLevel(INFO)
 
         db_connection_string = connection_string.get()
 

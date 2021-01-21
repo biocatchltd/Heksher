@@ -214,8 +214,8 @@ _with_options: Sequence[Tuple[Pattern[str], Type[OptionedSettingType]]] = [
 ]  # a list of patterns for the option setting types
 
 _generics: Sequence[Tuple[Pattern[str], Type[SingleGenericSettingType]]] = [
-    (re.compile(r'Sequence\s*<\s*(?P<param>.*)\s*>$'), SequenceSettingType),
-    (re.compile(r'Mapping\s*<\s*(?P<param>.*)\s*>$'), MappingSettingType),
+    (re.compile(r'Sequence\s*<(?P<param>.*)>$'), SequenceSettingType),
+    (re.compile(r'Mapping\s*<(?P<param>.*)>$'), MappingSettingType),
 ]  # a list of patterns for generic setting types
 
 
@@ -240,6 +240,6 @@ def setting_type(name: str) -> SettingType:
             return factory.from_json_list(name[match.end():])
     for (generic_pattern, factory) in _generics:
         if match := generic_pattern.match(name):
-            return factory.from_generic_param_name(match.group("param"))
+            return factory.from_generic_param_name(match.group("param").strip())
 
     raise ValueError(f'cannot resolve setting type {name}')
