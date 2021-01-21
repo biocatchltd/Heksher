@@ -18,6 +18,7 @@ startup_context_features = EnvVar('HEKSHER_STARTUP_CONTEXT_FEATURES', type=Colle
 class LogstashSettingSchema(Schema):
     host: str = EnvVar()
     port: int = EnvVar()
+    level: int = EnvVar(default=INFO)
     tags = EnvVar(type=CollectionParser.pair_wise_delimited(re.compile(r'\s'), ':', str, str))
 
 
@@ -42,7 +43,7 @@ class HeksherApp(FastAPI):
                 **settings.tags
             })
             getLogger('heksher').addHandler(handler)
-            getLogger('heksher').setLevel(INFO)
+            getLogger('heksher').setLevel(settings.level)
 
         db_connection_string = connection_string.get()
 
