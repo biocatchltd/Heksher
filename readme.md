@@ -34,11 +34,13 @@ we can find out the value of `cache_size` by simply querying the Heksher service
 (it is recommended to query and cache the results in advance, see below).
 
 ## How do I make it work?
-Currently, Heksher supports two environment variables, both of which are required:
-* `HEKSHER_DB_CONNECTION_STRING`: An [SqlAlchemy-style connection string](https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls)
+Currently, Heksher supports the following environment variables:
+* `HEKSHER_DB_CONNECTION_STRING`: (required) An [SqlAlchemy-style connection string](https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls)
  that leads to a postgreSql database that has been initialized (Heksher supports alembic to initialize a database).
-* `HEKSHER_STARTUP_CONTEXT_FEATURES`: A semicolon-delimited list of context features. Heksher will adapt the database's
-  existing context features to this list (or raise an error if it cannot).
+* `HEKSHER_STARTUP_CONTEXT_FEATURES`: (required) A semicolon-delimited list of context features. Heksher will adapt the
+  database's existing context features to this list (or raise an error if it cannot).
+* `HEKSHER_LOGSTASH_HOST`, `HEKSHER_LOGSTASH_PORT`, `HEKSHER_LOGSTASH_LEVEL`, `HEKSHER_LOGSTASH_TAGS`: Optional values
+  to allow sending logs to a logstash server.
 
 The service itself can be run from the docker image `<TBD>`.
 
