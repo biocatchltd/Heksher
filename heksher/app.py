@@ -2,6 +2,7 @@ import re
 from asyncio import wait_for
 from logging import getLogger, INFO
 
+import sentry_sdk
 from aiologstash import create_tcp_handler
 from databases import Database
 from envolved import EnvVar, Schema
@@ -11,6 +12,8 @@ from fastapi import FastAPI
 from heksher._version import __version__
 from heksher.db_logic import DBLogic
 
+logger = getLogger(__name__)
+
 connection_string = EnvVar('HEKSHER_DB_CONNECTION_STRING', type=str)
 startup_context_features = EnvVar('HEKSHER_STARTUP_CONTEXT_FEATURES', type=CollectionParser(';', str))
 
@@ -19,10 +22,11 @@ class LogstashSettingSchema(Schema):
     host: str = EnvVar()
     port: int = EnvVar()
     level: int = EnvVar(default=INFO)
-    tags = EnvVar(type=CollectionParser.pair_wise_delimited(re.compile(r'\s'), ':', str, str))
+    tags = EnvVar(type=CollectionParser.pair_wise_delimited(re.compile(r'\s'), ':', str, str), default={})
 
 
-logstash_settings = EnvVar('HEKSHER_LOGSTASH_', default=None, type=LogstashSettingSchema)
+logstash_settings_ev = EnvVar('HEKSHER_LOGSTASH_', default=None, type=LogstashSettingSchema)
+sentry_dsn_ev = EnvVar('SENTRY_DSN', default='', type=str)
 
 
 class HeksherApp(FastAPI):
@@ -32,18 +36,22 @@ class HeksherApp(FastAPI):
     db: Database
     db_logic: DBLogic
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     async def startup(self):
-        settings = logstash_settings.get()
-        if settings is not None:
-            handler = await create_tcp_handler(settings.host, settings.port, extra={
+        logstash_settings = logstash_settings_ev.get()
+        if logstash_settings is not None:
+            handler = await create_tcp_handler(logstash_settings.host, logstash_settings.port, extra={
                 'heksher_version': __version__,
-                **settings.tags
+                **logstash_settings.tags
             })
             getLogger('heksher').addHandler(handler)
-            getLogger('heksher').setLevel(settings.level)
+            getLogger('heksher').setLevel(logstash_settings.level)
+
+        sentry_dsn = sentry_dsn_ev.get()
+        if sentry_dsn:
+            try:
+                sentry_sdk.init(sentry_dsn, release=f"Heksher@{__version__}")
+            except Exception:
+                logger.exception("cannot start sentry")
 
         db_connection_string = connection_string.get()
 
