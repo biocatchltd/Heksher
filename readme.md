@@ -42,7 +42,7 @@ Currently, Heksher supports the following environment variables:
 * `HEKSHER_LOGSTASH_HOST`, `HEKSHER_LOGSTASH_PORT`, `HEKSHER_LOGSTASH_LEVEL`, `HEKSHER_LOGSTASH_TAGS`: Optional values
   to allow sending logs to a logstash server.
 
-The service itself can be run from the docker image `<TBD>`.
+The service itself can be run from the docker image [found in dockerhub](https://hub.docker.com/repository/docker/biocatchltd/heksher).
 
 ## How to I interface with it?
 Heksher supports an HTTP interface. There are many methods that adhere to be REST-ful (and can be viewed in full by
