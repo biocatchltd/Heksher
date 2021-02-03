@@ -119,7 +119,7 @@ def test_startup_logstash(monkeypatch, sql_service, purge_sql):
         monkeypatch.setattr(aiologstash, 'create_tcp_handler', mock_create_handler)
 
         with TestClient(app):
-            sleep(1)  # wait for logstash records
+            sleep(0.1)  # wait for logstash records
             # new context features were added, we should be seeing their logs now
             assert logstash.records
             for record in logstash.records:
