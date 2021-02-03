@@ -23,7 +23,7 @@ jobs:
     - name: Install poetry
       run: pip install poetry
     - name: Install dependencies
-      run: poetry install
+      run: poetry install -E alembic -E logstash
     - name: Linting
       run: poetry run sh scripts/lint.sh
     - name: Run unittests

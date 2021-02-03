@@ -34,7 +34,7 @@ def purge_sql(sql_service):
         GRANT ALL ON SCHEMA public TO public;
         ''')
     # we run create_all from outside to avoid alembic's side effects
-    run([sys.executable, 'alembic/from_scratch.py', sql_service.local_connection_string()])
+    run([sys.executable, 'alembic/from_scratch.py', sql_service.local_connection_string()], check=True)
     yield
 
 
