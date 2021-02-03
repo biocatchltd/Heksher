@@ -160,6 +160,7 @@ class GetSettingsInput(ORJSONModel):
         False, description='whether to include additional data about each setting'
     )
 
+
 # https://github.com/tiangolo/fastapi/issues/2724
 class GetSettingsOutput_Setting(ORJSONModel):
     name: str = Field(description="The name of the setting")
