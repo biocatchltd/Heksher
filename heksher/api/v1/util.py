@@ -9,7 +9,7 @@ def orjson_dumps(v, **kwargs):
     return str(orjson.dumps(v, **kwargs), 'utf-8')
 
 
-class ORJSONModel(BaseModel):
+class ORJSONModel(BaseModel):  # pytype: disable=base-class-error
     """
     BaseModel with default orjson loads, dumps
     """
