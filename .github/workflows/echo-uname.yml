@@ -1,0 +1,12 @@
+name: echo secret uname
+
+on:
+  workflow_dispatch:
+
+jobs:
+  echo:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: do the thing
+      run: echo "DOCKER_USERNAME ${{ secrets.DOCKER_USERNAME }}"
