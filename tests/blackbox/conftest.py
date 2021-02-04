@@ -14,7 +14,14 @@ from tests.blackbox.test_v1api_settings import size_limit_setting  # noqa: F401
 
 @fixture(scope='session')
 def docker_client():
-    return DockerClient.from_env()
+    # todo improve when yellowbox is upgraded
+    try:
+        ret = DockerClient.from_env()
+        ret.ping()
+    except Exception:
+        return DockerClient(base_url='tcp://localhost:2375')
+    else:
+        return ret
 
 
 @fixture(scope='session')
