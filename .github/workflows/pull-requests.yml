@@ -23,7 +23,7 @@ jobs:
     - name: Install poetry
       run: pip install poetry
     - name: Install dependencies
-      run: poetry install -E alembic -E logstash
+      run: poetry install -E alembic
     - name: setup-docker
       uses: docker-practice/actions-setup-docker@0.0.1
     - name: Linting
