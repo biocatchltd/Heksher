@@ -1,5 +1,4 @@
 import json
-import sys
 
 
 def _iter_build_log(build_log):
@@ -30,13 +29,8 @@ def test_image_builds(docker_client):
     build_log = docker_client.api.build(path=".", tag='heksher:testing', rm=True)
 
     # Wait till build is finished.
-    lines = list(_iter_build_log(build_log))
+    for line in _iter_build_log(build_log):
+        print(line)
 
-    try:
-        docker_client.images.get('heksher:testing')
-    except Exception:
-        for line in lines:
-            print(line, file=sys.stderr)
-        raise
-    else:
-        docker_client.images.remove('heksher:testing', force=True, noprune=True)
+    assert docker_client.images.get('heksher:testing')
+    docker_client.images.remove('heksher:testing', force=True, noprune=True)

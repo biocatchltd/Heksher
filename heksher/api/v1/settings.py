@@ -161,34 +161,37 @@ class GetSettingsInput(ORJSONModel):
     )
 
 
+# https://github.com/tiangolo/fastapi/issues/2724
+class GetSettingsOutput_Setting(ORJSONModel):
+    name: str = Field(description="The name of the setting")
+
+
 class GetSettingsOutput(ORJSONModel):
-    class Setting(ORJSONModel):
-        name: str = Field(description="The name of the setting")
-
-    settings: List[Setting] = Field(description="A list of all the setting, sorted by name")
+    settings: List[GetSettingsOutput_Setting] = Field(description="A list of all the setting, sorted by name")
 
 
-class GetSettingOutputWithData(ORJSONModel):
-    class Setting(GetSettingsOutput.Setting):
-        configurable_features: List[str] = Field(
-            description="a list of the context features the setting can be configured"
-                        " by")
-        type: str = Field(description="the type of the setting")
-        default_value: Any = Field(description="the default value of the setting")
-        metadata: Dict[str, Any] = Field(description="additional metadata of the setting")
-
-    settings: List[Setting] = Field(description="A list of all the setting, sorted by name")
+class GetSettingsOutputWithData_Setting(GetSettingsOutput_Setting):
+    configurable_features: List[str] = Field(
+        description="a list of the context features the setting can be configured"
+                    " by")
+    type: str = Field(description="the type of the setting")
+    default_value: Any = Field(description="the default value of the setting")
+    metadata: Dict[str, Any] = Field(description="additional metadata of the setting")
 
 
-@router.get('', response_model=Union[GetSettingOutputWithData, GetSettingsOutput])
+class GetSettingsOutputWithData(ORJSONModel):
+    settings: List[GetSettingsOutputWithData_Setting] = Field(description="A list of all the setting, sorted by name")
+
+
+@router.get('', response_model=Union[GetSettingsOutputWithData, GetSettingsOutput])
 async def get_settings(input: GetSettingsInput, app: HeksherApp = application):
     """
     List all the settings in the service
     """
     results = await app.db_logic.get_settings(input.include_additional_data)
     if input.include_additional_data:
-        return GetSettingOutputWithData(settings=[
-            GetSettingOutputWithData.Setting(
+        return GetSettingsOutputWithData(settings=[
+            GetSettingsOutputWithData_Setting(
                 name=spec.name,
                 configurable_features=spec.configurable_features,
                 type=spec.raw_type,
@@ -198,7 +201,7 @@ async def get_settings(input: GetSettingsInput, app: HeksherApp = application):
         ])
     else:
         return GetSettingsOutput(settings=[
-            GetSettingsOutput.Setting(
+            GetSettingsOutput_Setting(
                 name=spec.name
             ) for spec in results
         ])

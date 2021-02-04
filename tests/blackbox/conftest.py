@@ -14,7 +14,14 @@ from tests.blackbox.test_v1api_settings import size_limit_setting  # noqa: F401
 
 @fixture(scope='session')
 def docker_client():
-    return DockerClient.from_env()
+    # todo improve when yellowbox is upgraded
+    try:
+        ret = DockerClient.from_env()
+        ret.ping()
+    except Exception:
+        return DockerClient(base_url='tcp://localhost:2375')
+    else:
+        return ret
 
 
 @fixture(scope='session')
@@ -34,7 +41,7 @@ def purge_sql(sql_service):
         GRANT ALL ON SCHEMA public TO public;
         ''')
     # we run create_all from outside to avoid alembic's side effects
-    run([sys.executable, 'alembic/from_scratch.py', sql_service.local_connection_string()])
+    run([sys.executable, 'alembic/from_scratch.py', sql_service.local_connection_string()], check=True)
     yield
 
 

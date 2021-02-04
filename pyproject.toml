@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Heksher"
-version = "0.1.0"
+version = "0.1.1"
 description = "Heksker"
 authors = ["Biocatch LTD <serverteam@biocatch.com>"]
 
@@ -32,7 +32,6 @@ yellowbox = {extras = ["postgresql"], version = "^0.4.0"}
 
 [tool.poetry.extras]
 alembic = ["alembic", "psycopg2"]
-logstash = ["aiologstash"]
 
 [build-system]
 requires = ["poetry>=1.0.0"]
