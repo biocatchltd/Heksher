@@ -1,5 +1,4 @@
 import json
-import sys
 
 
 def _iter_build_log(build_log):
