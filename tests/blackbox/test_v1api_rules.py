@@ -241,6 +241,22 @@ def test_query_rules_time_cache(metadata: bool, app_client, setup_rules, mk_rule
 
 
 @mark.parametrize('metadata', [False, True])
+@mark.parametrize('suffix', ['Z', '+00:00', '+01:02', '-06:05'])
+def test_query_rules_bad_cache_time_zone(metadata: bool, suffix: str, app_client, setup_rules, mk_rule):
+    current_time = datetime.now()
+    # touch a to change its last_touch_time
+    mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
+
+    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+        'setting_names': ['a', 'b'],
+        'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
+        'include_metadata': metadata,
+        'cache_time': current_time.isoformat() + suffix,
+    }))
+    assert res.status_code == 422
+
+
+@mark.parametrize('metadata', [False, True])
 def test_query_rules_fully_cached(metadata: bool, app_client, setup_rules, mk_rule):
     current_time = datetime.now()
 

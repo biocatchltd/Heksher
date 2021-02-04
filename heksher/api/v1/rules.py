@@ -133,6 +133,13 @@ class QueryRulesInput(ORJSONModel):
                 raise ValueError('cannot accept an empty option')
         return v
 
+    @validator('cache_time')
+    @classmethod
+    def no_tz(cls, v: Optional[datetime]):
+        if v and v.tzinfo:
+            raise ValueError('cannot accept datetime with timezone')
+        return v
+
 
 # https://github.com/tiangolo/fastapi/issues/2724
 class QueryRulesOutput_Rule(ORJSONModel):

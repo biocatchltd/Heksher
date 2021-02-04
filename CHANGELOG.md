@@ -7,6 +7,7 @@
 * fixes issue where redoc would fail with 500 error
 * error with logstash environment parsing on linux
 * added validation to `POST Rule`
+* additional validation for cache_time with timezone
 ### Internal
 * added a test make sure redoc builds
 * BB tests can now be run from WSL
