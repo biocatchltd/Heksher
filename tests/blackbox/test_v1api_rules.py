@@ -32,6 +32,16 @@ def test_add_rule(example_rule, app_client):
     }
 
 
+def test_add_rule_no_conds(size_limit_setting, app_client):
+    res = app_client.post('/api/v1/rules', data=json.dumps({
+        'setting': 'size_limit',
+        'feature_values': {},
+        'value': 10,
+        'metadata': {'test': True}
+    }))
+    assert res.status_code == 422
+
+
 def test_add_rule_missing_setting(app_client):
     res = app_client.post('/api/v1/rules', data=json.dumps({
         'setting': 'size_limit_2',

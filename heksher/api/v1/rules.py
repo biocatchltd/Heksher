@@ -63,6 +63,13 @@ class AddRuleInput(ORJSONModel):
     value: Any = Field(description="the value of the setting in contexts that match the rule")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="additional metadata of the rule")
 
+    @validator('feature_values')
+    @classmethod
+    def feature_values_not_empty(cls, v):
+        if not v:
+            raise ValueError('feature_values must not be empty')
+        return v
+
 
 class AddRuleOutput(ORJSONModel):
     rule_id: int
