@@ -4,7 +4,7 @@ from asyncio.tasks import gather
 from datetime import datetime
 from itertools import groupby
 from operator import itemgetter
-from typing import Dict, Optional, Any, List, Tuple, NamedTuple, Sequence
+from typing import Dict, Optional, Any, List, Tuple, NamedTuple, Sequence, Union
 
 import orjson
 from sqlalchemy import select, join
@@ -143,7 +143,8 @@ class RuleMixin(DBLogicBase):
             )
         return rule_id
 
-    async def query_rules(self, setting_names: List[str], feature_value_options: Optional[Dict[str, List[str]]],
+    async def query_rules(self, setting_names: List[str],
+                          feature_value_options: Optional[Dict[str, Optional[List[str]]]],
                           setting_touch_time_cutoff: Optional[datetime],
                           include_metadata: bool) -> Dict[str, List[InnerRuleSpec]]:
         """
@@ -178,21 +179,30 @@ class RuleMixin(DBLogicBase):
             applicable_rules = {}
             rule_results = []
         else:
+            # inv_match is a mixin condition, if an exact-match condition returns True for it, the rule associated with
+            # it will not be returned
             if feature_value_options is None:
                 # match all
-                condition_tuples = '(null, null)'
-                # this is a trick to make all rules match
-                # x <> null == null, since this is in the WHERE clause, the sub-query will be empty. And since we only
-                # discount rules with non-empty subqueries, no rules will be discounted
+                inv_match = 'FALSE'
             elif not feature_value_options:
-                # get an empty list
-                condition_tuples = "select * from (values ('','')) as T(x,y) where x = '-'"
+                # match none
+                inv_match = 'TRUE'
             else:
-                # (no, parameterization doesn't work)
-                condition_tuples = ','.join(
-                    f"({inline_sql(k)},{inline_sql(v)})"
-                    for (k, values) in feature_value_options.items() for v in values
-                )
+                exact_tuple_conditions = []
+                only_cf_conditions = []
+                for k, v in feature_value_options.items():
+                    # (no, parameterization doesn't work)
+                    if v is None:
+                        only_cf_conditions.append(inline_sql(k))
+                    else:
+                        for cf_value in v:
+                            exact_tuple_conditions.append(f"({inline_sql(k)},{inline_sql(cf_value)})")
+                inv_match_predicates = []
+                if exact_tuple_conditions:
+                    inv_match_predicates.append('(context_feature, feature_value) NOT IN (' + ','.join(exact_tuple_conditions)+')')
+                if only_cf_conditions:
+                    inv_match_predicates.append('context_feature NOT IN (' + ','.join(only_cf_conditions)+')')
+                inv_match = ' AND '.join(inv_match_predicates)
 
             # (no, parameterization doesn't work)
             settings_container = ','.join(f"'{name}'" for name in applicable_settings)
@@ -209,7 +219,7 @@ class RuleMixin(DBLogicBase):
             WHERE NOT EXISTS (
               SELECT *
               from conditions
-              WHERE rule = C.rule AND (context_feature, feature_value) NOT IN ({condition_tuples})
+              WHERE rule = C.rule AND {inv_match}
             )
             ORDER BY rules.id, context_features.index;
             """

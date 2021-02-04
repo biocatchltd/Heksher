@@ -105,9 +105,16 @@ async def add_rule(input: AddRuleInput, app: HeksherApp = application):
 
 class QueryRulesInput(ORJSONModel):
     setting_names: List[SettingName] = Field(description="a list of setting names to return the rules for")
-    context_features_options: Union[Dict[ContextFeatureName, List[ContextFeatureValue]], Literal['*']] = Field(
+    context_features_options: Union[
+        Dict[ContextFeatureName, Union[
+            List[ContextFeatureValue], Literal['*']
+        ]],
+        Literal['*']
+    ] = Field(
         description="a mapping of context features and possible values. Any rule with an exact-match condition not in"
-                    " this mapping will not be returned. Optionally can be set to '*' to return all rules"
+                    " this mapping will not be returned. Optionally can be set to '*' to return all rules, or set an"
+                    " individual context feature to '*' to not disqualify rules with conditions on that context"
+                    " feature."
     )
     cache_time: Optional[datetime] = Field(None, description="if provided, any settings that have not been changed"
                                                              " since this time will be ignored")
@@ -115,9 +122,15 @@ class QueryRulesInput(ORJSONModel):
                                                       " the results")
 
     @validator('context_features_options')
+    @classmethod
     def wildcard(cls, v):
         if v == '*':
             return None
+        for k in v.keys():
+            if v[k] == '*':
+                v[k] = None
+            elif not v[k]:
+                raise ValueError('cannot accept an empty option')
         return v
 
 

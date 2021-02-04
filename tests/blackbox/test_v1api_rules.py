@@ -366,10 +366,68 @@ def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
     assert res.json() == expected
 
 
+@mark.parametrize('metadata', [False, True])
+def test_query_rules_wildcard_some(metadata: bool, app_client, setup_rules):
+    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+        'setting_names': ['a', 'b'],
+        'context_features_options': {'theme': '*', 'trust': ['full', 'none']},
+        'include_metadata': metadata
+    }))
+
+    expected = {
+        'rules': {
+            'a': [
+                {'context_features': [['trust', 'full']], 'value': 1},
+                {'context_features': [['theme', 'black']], 'value': 2},
+                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3},
+            ],
+            'b': [
+                {'context_features': [['trust', 'none']], 'value': 4},
+            ]
+        }
+    }
+    if metadata:
+        for rule in chain.from_iterable(expected['rules'].values()):
+            rule['metadata'] = {'test': 'yes'}
+
+    assert res.json() == expected
+
+
+@mark.parametrize('metadata', [False, True])
+def test_query_rules_wildcard_only(metadata: bool, app_client, setup_rules):
+    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+        'setting_names': ['a', 'b'],
+        'context_features_options': {'theme': '*'},
+        'include_metadata': metadata
+    }))
+
+    expected = {
+        'rules': {
+            'a': [
+                {'context_features': [['theme', 'black']], 'value': 2},
+            ],
+            'b': []
+        }
+    }
+    if metadata:
+        for rule in chain.from_iterable(expected['rules'].values()):
+            rule['metadata'] = {'test': 'yes'}
+
+    assert res.json() == expected
+
+
 def test_query_rules_bad_contexts(app_client, setup_rules):
     res = app_client.get('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black'], 'love': ['overflowing']},
+    }))
+    assert 400 <= res.status_code <= 499
+
+
+def test_query_rules_empty_contexts(app_client, setup_rules):
+    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+        'setting_names': ['a', 'b'],
+        'context_features_options': {'trust': []}
     }))
     assert 400 <= res.status_code <= 499
 
@@ -387,5 +445,14 @@ def test_query_rules_bad_options(app_client, setup_rules, options):
     res = app_client.get('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a'],
         'context_features_options': options,
+    }))
+    assert res.status_code == 422, res.content
+
+
+@mark.parametrize('options', [None, '**', 'wildcard'])
+def test_query_rules_bad_inner_option(app_client, setup_rules, options):
+    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+        'setting_names': ['a'],
+        'context_features_options': {'trust': options},
     }))
     assert res.status_code == 422, res.content

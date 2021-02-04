@@ -1,6 +1,8 @@
 # Heksher Changelog
 ## unreleased major
 ## unreleased
+### Added
+* When querying rules, users can now specify a context feature with "*", to allow any condition with that feature.
 ### Fixed
 * fixes issue where redoc would fail with 500 error
 * error with logstash environment parsing on linux
