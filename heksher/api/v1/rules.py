@@ -121,21 +121,25 @@ class QueryRulesInput(ORJSONModel):
         return v
 
 
-class QueryRulesOutput(ORJSONModel):
-    class Rule(ORJSONModel):
-        value: Any = Field(description="the value of the setting in contexts where the rule matches")
-        context_features: List[Tuple[str, str]] = Field(
-            description="a list of exact-match conditions for the rule, in hierarchical order"
-        )
+# https://github.com/tiangolo/fastapi/issues/2724
+class QueryRulesOutput_Rule(ORJSONModel):
+    value: Any = Field(description="the value of the setting in contexts where the rule matches")
+    context_features: List[Tuple[str, str]] = Field(
+        description="a list of exact-match conditions for the rule, in hierarchical order"
+    )
 
-    rules: Dict[str, List[Rule]] = Field(description="a list of rules for each setting that was not filtered out")
+
+class QueryRulesOutput(ORJSONModel):
+    rules: Dict[str, List[QueryRulesOutput_Rule]] = Field(description="a list of rules for each setting that was not"
+                                                                      " filtered out")
+
+
+class QueryRulesOutputWithMetadata_Rule(QueryRulesOutput_Rule):
+    metadata: Dict[str, Any] = Field(description="the metadata of the rule, if requested")
 
 
 class QueryRulesOutputWithMetadata(ORJSONModel):
-    class Rule(QueryRulesOutput.Rule):
-        metadata: Dict[str, Any] = Field(description="the metadata of the rule, if requested")
-
-    rules: Dict[str, List[Rule]] = Field(
+    rules: Dict[str, List[QueryRulesOutputWithMetadata_Rule]] = Field(
         description="a list of rules for each setting that was not filtered out"
     )
 
@@ -163,7 +167,7 @@ async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
         return QueryRulesOutputWithMetadata(
             rules={
                 setting: [
-                    QueryRulesOutputWithMetadata.Rule(
+                    QueryRulesOutputWithMetadata_Rule(
                         value=rule.value, context_features=rule.feature_values, metadata=rule.metadata
                     )
                     for rule in rules
@@ -173,7 +177,7 @@ async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
         return QueryRulesOutput(
             rules={
                 setting: [
-                    QueryRulesOutput.Rule(value=rule.value, context_features=rule.feature_values)
+                    QueryRulesOutput_Rule(value=rule.value, context_features=rule.feature_values)
                     for rule in rules
                 ] for setting, rules in query_result.items()
             })

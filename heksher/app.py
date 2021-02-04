@@ -19,10 +19,11 @@ startup_context_features = EnvVar('HEKSHER_STARTUP_CONTEXT_FEATURES', type=Colle
 
 
 class LogstashSettingSchema(Schema):
-    host: str = EnvVar()
-    port: int = EnvVar()
-    level: int = EnvVar(default=INFO)
-    tags = EnvVar(type=CollectionParser.pair_wise_delimited(re.compile(r'\s'), ':', str, str), default={})
+    # todo remove explicit uppercase names when envolved is upgraded
+    host: str = EnvVar('HOST')
+    port: int = EnvVar('PORT')
+    level: int = EnvVar('LEVEL', default=INFO)
+    tags = EnvVar('TAGS', type=CollectionParser.pair_wise_delimited(re.compile(r'\s'), ':', str, str), default={})
 
 
 logstash_settings_ev = EnvVar('HEKSHER_LOGSTASH_', default=None, type=LogstashSettingSchema)

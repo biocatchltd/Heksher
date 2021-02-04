@@ -2,9 +2,9 @@ name: Blackbox Tests
 
 on:
   push:
-    branches: [ develop, master ]
+    branches: [ main ]
   pull_request:
-    branches: [ develop, master ]
+    branches: [ main ]
 
 jobs:
   lint-and-tests:
@@ -23,7 +23,9 @@ jobs:
     - name: Install poetry
       run: pip install poetry
     - name: Install dependencies
-      run: poetry install
+      run: poetry install -E alembic
+    - name: setup-docker
+      uses: docker-practice/actions-setup-docker@0.0.1
     - name: Linting
       run: poetry run sh scripts/lint.sh
     - name: Run unittests
