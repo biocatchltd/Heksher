@@ -4,14 +4,13 @@ from asyncio.tasks import gather
 from datetime import datetime
 from itertools import groupby
 from operator import itemgetter
-from typing import Dict, Optional, Any, List, Tuple, NamedTuple, Sequence, Union
+from typing import Dict, Optional, Any, List, Tuple, NamedTuple, Sequence
 
 import orjson
 from sqlalchemy import select, join
 
 from heksher.db_logic.logic_base import DBLogicBase
 from heksher.db_logic.metadata import rules, conditions, settings, context_features
-
 
 # This class should be used in the context of db logic api only
 from heksher.db_logic.util import inline_sql
@@ -199,9 +198,11 @@ class RuleMixin(DBLogicBase):
                             exact_tuple_conditions.append(f"({inline_sql(k)},{inline_sql(cf_value)})")
                 inv_match_predicates = []
                 if exact_tuple_conditions:
-                    inv_match_predicates.append('(context_feature, feature_value) NOT IN (' + ','.join(exact_tuple_conditions)+')')
+                    inv_match_predicates.append(
+                        '(context_feature, feature_value) NOT IN (' + ','.join(exact_tuple_conditions) + ')'
+                    )
                 if only_cf_conditions:
-                    inv_match_predicates.append('context_feature NOT IN (' + ','.join(only_cf_conditions)+')')
+                    inv_match_predicates.append('context_feature NOT IN (' + ','.join(only_cf_conditions) + ')')
                 inv_match = ' AND '.join(inv_match_predicates)
 
             # (no, parameterization doesn't work)
