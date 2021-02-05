@@ -31,6 +31,7 @@ class InnerRuleSpec(NamedTuple):
     value: Any
     feature_values: Sequence[Tuple[str, str]]
     metadata: Optional[Dict[str, Any]]
+    rule_id: int
 
 
 class RuleMixin(DBLogicBase):
@@ -243,6 +244,7 @@ class RuleMixin(DBLogicBase):
                     orjson.loads(row['value']),
                     applicable_rules[row['id']],
                     orjson.loads(row['metadata']) if include_metadata else None,
+                    row['id']
                 )
                 for row in rows
             ]
