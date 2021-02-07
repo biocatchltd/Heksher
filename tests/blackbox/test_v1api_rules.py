@@ -185,12 +185,12 @@ def test_query_rules(metadata: bool, app_client, setup_rules):
     expected = {
         'rules': {
             'a': [
-                {'context_features': [['trust', 'full']], 'value': 1},
-                {'context_features': [['theme', 'black']], 'value': 2},
-                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3}
+                {'context_features': [['trust', 'full']], 'value': 1, 'rule_id': 1},
+                {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
+                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3, 'rule_id': 3}
             ],
             'b': [
-                {'context_features': [['trust', 'part']], 'value': 5}
+                {'context_features': [['trust', 'part']], 'value': 5, 'rule_id': 5}
             ]
         }
     }
@@ -217,9 +217,9 @@ def test_query_rules_time_cache(metadata: bool, app_client, setup_rules, mk_rule
     expected = {
         'rules': {
             'a': [
-                {'context_features': [['trust', 'full']], 'value': 1},
-                {'context_features': [['theme', 'black']], 'value': 2},
-                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3}
+                {'context_features': [['trust', 'full']], 'value': 1, 'rule_id': 1},
+                {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
+                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3, 'rule_id': 3}
             ],
         }
     }
@@ -264,13 +264,13 @@ def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, sql_ser
     expected = {
         'rules': {
             'a': [
-                {'context_features': [['trust', 'full']], 'value': 1},
-                {'context_features': [['theme', 'black']], 'value': 2},
-                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3}
+                {'context_features': [['trust', 'full']], 'rule_id': 1, 'value': 1},
+                {'context_features': [['theme', 'black']], 'rule_id': 2, 'value': 2},
+                {'context_features': [['trust', 'full'], ['theme', 'black']], 'rule_id': 3, 'value': 3}
             ],
             'b': [
-                {'context_features': [['trust', 'part']], 'value': 5},
-                {'context_features': [], 'value': 10}
+                {'context_features': [['trust', 'part']], 'rule_id': 5, 'value': 5},
+                {'context_features': [], 'rule_id': 8, 'value': 10}
             ]
         }
     }
@@ -315,7 +315,7 @@ def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, setup_r
         'rules': {
             'a': [],
             'b': [
-                {'context_features': [], 'value': 10},
+                {'context_features': [], 'value': 10, 'rule_id': 8},
             ]
         }
     }
@@ -338,14 +338,14 @@ def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
     expected = {
         'rules': {
             'a': [
-                {'context_features': [['trust', 'full']], 'value': 1},
-                {'context_features': [['theme', 'black']], 'value': 2},
-                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3},
-                {'context_features': [['user', 'admin'], ['theme', 'black']], 'value': 7}
+                {'context_features': [['trust', 'full']], 'value': 1, 'rule_id': 1},
+                {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
+                {'context_features': [['trust', 'full'], ['theme', 'black']],  'rule_id': 3, 'value': 3},
+                {'context_features': [['user', 'admin'], ['theme', 'black']], 'rule_id': 7, 'value': 7}
             ],
             'b': [
-                {'context_features': [['trust', 'none']], 'value': 4},
-                {'context_features': [['trust', 'part']], 'value': 5}
+                {'context_features': [['trust', 'none']], 'rule_id': 4, 'value': 4},
+                {'context_features': [['trust', 'part']], 'rule_id': 5, 'value': 5}
             ]
         }
     }

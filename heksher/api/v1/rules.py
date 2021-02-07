@@ -120,6 +120,7 @@ class QueryRulesOutput_Rule(ORJSONModel):
     context_features: List[Tuple[str, str]] = Field(
         description="a list of exact-match conditions for the rule, in hierarchical order"
     )
+    rule_id: int = Field(description="unique identifier of the rule.")
 
 
 class QueryRulesOutput(ORJSONModel):
@@ -161,7 +162,8 @@ async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
             rules={
                 setting: [
                     QueryRulesOutputWithMetadata_Rule(
-                        value=rule.value, context_features=rule.feature_values, metadata=rule.metadata
+                        value=rule.value, context_features=rule.feature_values, metadata=rule.metadata,
+                        rule_id=rule.rule_id
                     )
                     for rule in rules
                 ] for setting, rules in query_result.items()
@@ -170,7 +172,7 @@ async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
         return QueryRulesOutput(
             rules={
                 setting: [
-                    QueryRulesOutput_Rule(value=rule.value, context_features=rule.feature_values)
+                    QueryRulesOutput_Rule(value=rule.value, context_features=rule.feature_values, rule_id=rule.rule_id)
                     for rule in rules
                 ] for setting, rules in query_result.items()
             })
