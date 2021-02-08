@@ -1,6 +1,10 @@
 # Heksher Changelog
 ## unreleased major
 ## unreleased
+## 0.2.0
+### Changed
+* `/rules/search` and `/rules/query` have been changed to `POST`
+* `GET settings/`'s `include_additional_data` parameter has been moved from the request body to the query.
 ### Added
 * When querying rules, users can now specify a context feature with "*", to allow any condition with that feature.
 * `rule_id` to `/api/v1/rules/query` response.
