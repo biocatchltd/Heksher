@@ -110,7 +110,7 @@ def test_get_rule_missing(example_rule, app_client):
 
 
 def test_search_rule(example_rule, app_client, sql_service):
-    res = app_client.get('/api/v1/rules/search', data=json.dumps({
+    res = app_client.post('/api/v1/rules/search', data=json.dumps({
         'setting': 'size_limit',
         'feature_values': [('theme', 'bright')]
     }))
@@ -129,7 +129,7 @@ def test_search_rule_empty(example_rule, app_client, sql_service):
 
 
 def test_search_rule_missing(example_rule, app_client):
-    res = app_client.get('/api/v1/rules/search', data=json.dumps({
+    res = app_client.post('/api/v1/rules/search', data=json.dumps({
         'setting': 'size_limit',
         'feature_values': [('theme', 'dark')]
     }))
@@ -186,7 +186,7 @@ def setup_rules(mk_setting, mk_rule):
 
 @mark.parametrize('metadata', [False, True])
 def test_query_rules(metadata: bool, app_client, setup_rules):
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+    res = app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata
@@ -217,7 +217,7 @@ def test_query_rules_time_cache(metadata: bool, app_client, setup_rules, mk_rule
     # touch a to change its last_touch_time
     mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
 
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+    res = app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata,
@@ -260,7 +260,7 @@ def test_query_rules_bad_cache_time_zone(metadata: bool, suffix: str, app_client
 def test_query_rules_fully_cached(metadata: bool, app_client, setup_rules, mk_rule):
     current_time = datetime.now()
 
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+    res = app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata,
@@ -281,7 +281,7 @@ def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, sql_ser
         INSERT INTO rules (setting, value, metadata) VALUES ('b', '10', '{"test": "yes"}')
         """)
 
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+    res = app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata
@@ -309,7 +309,7 @@ def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, sql_ser
 
 @mark.parametrize('metadata', [False, True])
 def test_query_rules_nooptions(metadata: bool, app_client, setup_rules):
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+    res = app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a'],
         'context_features_options': {},
         'include_metadata': metadata
@@ -331,7 +331,7 @@ def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, setup_r
         INSERT INTO rules (setting, value, metadata) VALUES ('b', '10', '{"test": "yes"}')
         """)
 
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+    res = app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {},
         'include_metadata': metadata
@@ -355,7 +355,7 @@ def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, setup_r
 
 @mark.parametrize('metadata', [False, True])
 def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+    res = app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': '*',
         'include_metadata': metadata
@@ -384,7 +384,7 @@ def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
 
 @mark.parametrize('metadata', [False, True])
 def test_query_rules_wildcard_some(metadata: bool, app_client, setup_rules):
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+    res = app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'theme': '*', 'trust': ['full', 'none']},
         'include_metadata': metadata
@@ -411,7 +411,7 @@ def test_query_rules_wildcard_some(metadata: bool, app_client, setup_rules):
 
 @mark.parametrize('metadata', [False, True])
 def test_query_rules_wildcard_only(metadata: bool, app_client, setup_rules):
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+    res = app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'theme': '*'},
         'include_metadata': metadata

@@ -45,7 +45,7 @@ class SearchRuleOutput(ORJSONModel):
     rule_id: int
 
 
-@router.get('/search', response_model=SearchRuleOutput)
+@router.post('/search', response_model=SearchRuleOutput)
 async def search_rule(input: SearchRuleInput, app: HeksherApp = application):
     """
     Get the ID of a rule with specific conditions.
@@ -165,7 +165,7 @@ class QueryRulesOutputWithMetadata(ORJSONModel):
     )
 
 
-@router.get('/query', response_model=Union[QueryRulesOutputWithMetadata, QueryRulesOutput])
+@router.post('/query', response_model=Union[QueryRulesOutputWithMetadata, QueryRulesOutput])
 async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
     """
     Query settings for rules for a specific set of potential contexts.
