@@ -155,12 +155,6 @@ async def get_setting(name: str, app: HeksherApp = application):
                             type=str(setting.type), default_value=setting.default_value, metadata=setting.metadata)
 
 
-class GetSettingsInput(ORJSONModel):
-    include_additional_data: bool = Field(
-        False, description='whether to include additional data about each setting'
-    )
-
-
 # https://github.com/tiangolo/fastapi/issues/2724
 class GetSettingsOutput_Setting(ORJSONModel):
     name: str = Field(description="The name of the setting")
@@ -184,12 +178,12 @@ class GetSettingsOutputWithData(ORJSONModel):
 
 
 @router.get('', response_model=Union[GetSettingsOutputWithData, GetSettingsOutput])
-async def get_settings(input: GetSettingsInput, app: HeksherApp = application):
+async def get_settings(include_additional_data: bool = False, app: HeksherApp = application):
     """
     List all the settings in the service
     """
-    results = await app.db_logic.get_settings(input.include_additional_data)
-    if input.include_additional_data:
+    results = await app.db_logic.get_settings(include_additional_data)
+    if include_additional_data:
         return GetSettingsOutputWithData(settings=[
             GetSettingsOutputWithData_Setting(
                 name=spec.name,

@@ -45,7 +45,7 @@ class SearchRuleOutput(ORJSONModel):
     rule_id: int
 
 
-@router.get('/search', response_model=SearchRuleOutput)
+@router.post('/search', response_model=SearchRuleOutput)
 async def search_rule(input: SearchRuleInput, app: HeksherApp = application):
     """
     Get the ID of a rule with specific conditions.
@@ -62,6 +62,13 @@ class AddRuleInput(ORJSONModel):
         Field(description="the exact-match conditions of the rule")
     value: Any = Field(description="the value of the setting in contexts that match the rule")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="additional metadata of the rule")
+
+    @validator('feature_values')
+    @classmethod
+    def feature_values_not_empty(cls, v):
+        if not v:
+            raise ValueError('feature_values must not be empty')
+        return v
 
 
 class AddRuleOutput(ORJSONModel):
@@ -98,9 +105,16 @@ async def add_rule(input: AddRuleInput, app: HeksherApp = application):
 
 class QueryRulesInput(ORJSONModel):
     setting_names: List[SettingName] = Field(description="a list of setting names to return the rules for")
-    context_features_options: Union[Dict[ContextFeatureName, List[ContextFeatureValue]], Literal['*']] = Field(
+    context_features_options: Union[
+        Dict[ContextFeatureName, Union[
+            List[ContextFeatureValue], Literal['*']
+        ]],
+        Literal['*']
+    ] = Field(
         description="a mapping of context features and possible values. Any rule with an exact-match condition not in"
-                    " this mapping will not be returned. Optionally can be set to '*' to return all rules"
+                    " this mapping will not be returned. Optionally can be set to '*' to return all rules, or set an"
+                    " individual context feature to '*' to not disqualify rules with conditions on that context"
+                    " feature."
     )
     cache_time: Optional[datetime] = Field(None, description="if provided, any settings that have not been changed"
                                                              " since this time will be ignored")
@@ -108,9 +122,22 @@ class QueryRulesInput(ORJSONModel):
                                                       " the results")
 
     @validator('context_features_options')
+    @classmethod
     def wildcard(cls, v):
         if v == '*':
             return None
+        for k in v.keys():
+            if v[k] == '*':
+                v[k] = None
+            elif not v[k]:
+                raise ValueError('cannot accept an empty option')
+        return v
+
+    @validator('cache_time')
+    @classmethod
+    def no_tz(cls, v: Optional[datetime]):
+        if v and v.tzinfo:
+            raise ValueError('cannot accept datetime with timezone')
         return v
 
 
@@ -138,7 +165,7 @@ class QueryRulesOutputWithMetadata(ORJSONModel):
     )
 
 
-@router.get('/query', response_model=Union[QueryRulesOutputWithMetadata, QueryRulesOutput])
+@router.post('/query', response_model=Union[QueryRulesOutputWithMetadata, QueryRulesOutput])
 async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
     """
     Query settings for rules for a specific set of potential contexts.

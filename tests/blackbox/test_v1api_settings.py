@@ -258,9 +258,9 @@ def test_get_settings_additional_data(app_client):
     mk_setting('c', 'float')
     mk_setting('b', 'str')
 
-    res = app_client.get('api/v1/settings', data=json.dumps({
+    res = app_client.get('api/v1/settings', params={
         'include_additional_data': True
-    }))
+    })
     res.raise_for_status()
     assert res.json() == {
         'settings': [
