@@ -393,12 +393,12 @@ def test_query_rules_wildcard_some(metadata: bool, app_client, setup_rules):
     expected = {
         'rules': {
             'a': [
-                {'context_features': [['trust', 'full']], 'value': 1},
-                {'context_features': [['theme', 'black']], 'value': 2},
-                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3},
+                {'context_features': [['trust', 'full']], 'value': 1, 'rule_id': 1},
+                {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
+                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3, 'rule_id': 3},
             ],
             'b': [
-                {'context_features': [['trust', 'none']], 'value': 4},
+                {'context_features': [['trust', 'none']], 'value': 4, 'rule_id': 4},
             ]
         }
     }
@@ -420,7 +420,7 @@ def test_query_rules_wildcard_only(metadata: bool, app_client, setup_rules):
     expected = {
         'rules': {
             'a': [
-                {'context_features': [['theme', 'black']], 'value': 2},
+                {'context_features': [['theme', 'black']], 'value': 2, 'rule_id':2},
             ],
             'b': []
         }
