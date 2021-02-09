@@ -148,6 +148,7 @@ def test_flags():
 
     assert not s_type.validate([1, 2])
     assert not s_type.validate([False])
+    assert not s_type.validate({"yes": True})
     assert not s_type.validate([True, 0, 0])
 
 
@@ -194,3 +195,22 @@ def test_generic_types(gen_kind):
     for t, s in zip(types, strings):
         assert str(t) == s
         assert all(other is t or other != t for other in types)
+
+
+@mark.parametrize('setting_type_name', [
+    'Sequence<Sequence<int>>',
+    'Mapping<str>',
+    'str',
+    'int',
+    'bool',
+    'float',
+    'Flags["hi", "there"]',
+    'Enum[0,1,2,3,4]',
+    'Flags[0,1,2,3,4]'
+])
+@mark.parametrize('input', [
+    0, 1, 2, 3, [1, 2, 3], "hi", 15.6, False, True, None, object(), {'hi': 'there'}, [], ('a', 'b', 'c'), ['hi'], [[]]
+])
+def test_validation_never_fails(setting_type_name, input):
+    st = setting_type(setting_type_name)
+    assert isinstance(st.validate(input), bool)

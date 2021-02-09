@@ -1,6 +1,8 @@
 # Heksher Changelog
 ## unreleased major
 ## unreleased
+### Fixed
+* Fixed validation of flag and enum types
 ## 0.2.0
 ### Changed
 * `/rules/search` and `/rules/query` have been changed to `POST`
