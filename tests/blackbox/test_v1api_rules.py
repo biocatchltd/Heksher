@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from itertools import chain
 
 from pytest import fixture, mark
@@ -213,7 +213,7 @@ def test_query_rules(metadata: bool, app_client, setup_rules):
 
 @mark.parametrize('metadata', [False, True])
 def test_query_rules_time_cache(metadata: bool, app_client, setup_rules, mk_rule):
-    current_time = datetime.now()
+    current_time = datetime.utcnow()
     # touch a to change its last_touch_time
     mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
 
@@ -243,7 +243,7 @@ def test_query_rules_time_cache(metadata: bool, app_client, setup_rules, mk_rule
 @mark.parametrize('metadata', [False, True])
 @mark.parametrize('suffix', ['Z', '+00:00', '+01:02', '-06:05'])
 def test_query_rules_bad_cache_time_zone(metadata: bool, suffix: str, app_client, setup_rules, mk_rule):
-    current_time = datetime.now()
+    current_time = datetime.utcnow()
     # touch a to change its last_touch_time
     mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
 
@@ -258,7 +258,7 @@ def test_query_rules_bad_cache_time_zone(metadata: bool, suffix: str, app_client
 
 @mark.parametrize('metadata', [False, True])
 def test_query_rules_fully_cached(metadata: bool, app_client, setup_rules, mk_rule):
-    current_time = datetime.now()
+    current_time = datetime.utcnow()
 
     res = app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
@@ -366,7 +366,7 @@ def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
             'a': [
                 {'context_features': [['trust', 'full']], 'value': 1, 'rule_id': 1},
                 {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
-                {'context_features': [['trust', 'full'], ['theme', 'black']],  'rule_id': 3, 'value': 3},
+                {'context_features': [['trust', 'full'], ['theme', 'black']], 'rule_id': 3, 'value': 3},
                 {'context_features': [['user', 'admin'], ['theme', 'black']], 'rule_id': 7, 'value': 7}
             ],
             'b': [
@@ -420,7 +420,7 @@ def test_query_rules_wildcard_only(metadata: bool, app_client, setup_rules):
     expected = {
         'rules': {
             'a': [
-                {'context_features': [['theme', 'black']], 'value': 2, 'rule_id':2},
+                {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
             ],
             'b': []
         }
@@ -472,3 +472,31 @@ def test_query_rules_bad_inner_option(app_client, setup_rules, options):
         'context_features_options': {'trust': options},
     }))
     assert res.status_code == 422, res.content
+
+
+@mark.parametrize('metadata', [False, True])
+def test_query_rules_nosettings(metadata: bool, app_client, setup_rules):
+    res = app_client.post('/api/v1/rules/query', data=json.dumps({
+        'setting_names': [],
+        'context_features_options': '*',
+        'include_metadata': metadata
+    }))
+
+    expected = {'rules': {}}
+
+    assert res.json() == expected
+
+
+@mark.parametrize('metadata', [False, True])
+def test_query_rules_bad_cache_time_zone(metadata: bool, app_client, setup_rules, mk_rule):
+    future_time = datetime.utcnow() + timedelta(hours=2)
+    # touch a to change its last_touch_time
+    mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
+
+    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+        'setting_names': ['a', 'b'],
+        'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
+        'include_metadata': metadata,
+        'cache_time': future_time.isoformat(),
+    }))
+    assert res.status_code == 422
