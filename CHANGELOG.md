@@ -1,6 +1,9 @@
 # Heksher Changelog
 ## unreleased major
 ## unreleased
+## 0.2.2
+### Fixed
+* patched a bug in FastAPI where a 204 response would still have content
 ## 0.2.1
 ### Added
 * added validation of cache time to ensure the time is not in the future.

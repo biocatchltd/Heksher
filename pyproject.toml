@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Heksher"
-version = "0.2.1"
+version = "0.2.2"
 description = "Heksker"
 authors = ["Biocatch LTD <serverteam@biocatch.com>"]
 

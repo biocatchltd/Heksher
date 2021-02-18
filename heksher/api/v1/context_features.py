@@ -23,13 +23,13 @@ async def check_context_features(app: HeksherApp = application):
     return GetContextFeaturesResponse(context_features=await app.db_logic.get_context_features())
 
 
-@router.get('/{name}', status_code=status.HTTP_204_NO_CONTENT)
+@router.get('/{name}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def get_context_feature(name: str, app: HeksherApp = application):
     """
     Check whether a context exists.
     """
     if await app.db_logic.is_context_feature(name):
-        return Response()
+        return
     return Response(status_code=status.HTTP_404_NOT_FOUND)
 
 

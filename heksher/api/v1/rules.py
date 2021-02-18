@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple, Union, Any, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from pydantic import Field, validator  # pytype: disable=import-error
 from starlette import status
 from starlette.responses import PlainTextResponse
@@ -14,7 +14,7 @@ from heksher.setting import Setting
 router = APIRouter(prefix='/rules')
 
 
-@router.delete('/{rule_id}', status_code=status.HTTP_204_NO_CONTENT)
+@router.delete('/{rule_id}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_rule(rule_id: int, app: HeksherApp = application):
     """
     Remove a rule.
