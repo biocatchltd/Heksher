@@ -3,7 +3,7 @@ from logging import getLogger
 from typing import List, Dict, Any, Union
 
 import orjson
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from pydantic import Field, root_validator  # pytype: disable=import-error
 from starlette import status
 from starlette.responses import PlainTextResponse
@@ -119,7 +119,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     return DeclareSettingOutput(created=False, changed=changed, incomplete=incomplete)
 
 
-@router.delete('/{name}', status_code=status.HTTP_204_NO_CONTENT)
+@router.delete('/{name}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_setting(name: str, app: HeksherApp = application):
     """
     Delete a setting.

@@ -197,6 +197,7 @@ def test_get_setting_missing(app_client):
 def test_delete_setting(size_limit_setting, app_client):
     res = app_client.delete('api/v1/settings/size_limit')
     assert res.status_code == 204
+    assert not res.content
     res = app_client.get('api/v1/settings/size_limit')
     assert res.status_code == 404
 

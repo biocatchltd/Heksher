@@ -95,6 +95,7 @@ def test_block_injection(example_rule, app_client):
 def test_delete_rule(example_rule, app_client):
     res = app_client.delete(f'/api/v1/rules/{example_rule}')
     res.raise_for_status()
+    assert not res.content
     res = app_client.get(f'/api/v1/rules/{example_rule}')
     assert res.status_code == 404
 
