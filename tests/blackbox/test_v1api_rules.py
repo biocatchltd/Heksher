@@ -488,7 +488,7 @@ def test_query_rules_nosettings(metadata: bool, app_client, setup_rules):
 
 
 @mark.parametrize('metadata', [False, True])
-def test_query_rules_bad_cache_time_zone(metadata: bool, app_client, setup_rules, mk_rule):
+def test_query_rules_bad_cache_future(metadata: bool, app_client, setup_rules, mk_rule):
     future_time = datetime.utcnow() + timedelta(hours=2)
     # touch a to change its last_touch_time
     mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
