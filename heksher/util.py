@@ -22,7 +22,12 @@ class JsonPrimitiveSet(AbstractSet[Union[str, bool, float, int]]):
         return type(v), v
 
     def __contains__(self, item):
-        return self._inner_element(item) in self._inner
+        try:
+            inner_element = self._inner_element(item)
+        except TypeError:
+            # not a primitive, therefore never will be in the set
+            return False
+        return inner_element in self._inner
 
     def __iter__(self):
         return (yield from (i[1] for i in self._inner))

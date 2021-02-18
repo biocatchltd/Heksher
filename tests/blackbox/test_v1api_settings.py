@@ -32,7 +32,7 @@ def test_declare_new_setting(size_limit_setting, app_client):
     }
 
 
-@mark.parametrize('type_', [15, 'Flags{1,2,3}', 'enum[1,2,3]'])
+@mark.parametrize('type_', [15, 'Flags{1,2,3}', 'enum[1,2,3]', 'Flags[[0]]', 'Flags[]'])
 def test_declare_new_setting_bad_type(app_client, type_):
     res = app_client.put('api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',

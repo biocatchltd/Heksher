@@ -136,9 +136,14 @@ class FlagSettingType(OptionedSettingType):
         return 'Flags[' + ",".join(sorted(json.dumps(option) for option in self.options)) + ']'
 
     def validate(self, x) -> bool:
+        if not isinstance(x, list):
+            return False
         seen = set()
         for i in x:
-            if i in seen:
+            try:
+                if i in seen:
+                    return False
+            except TypeError:  # i is unhashable
                 return False
             seen.add(i)
             if i not in self.options:
