@@ -1,8 +1,13 @@
 # Heksher Changelog
 ## unreleased major
 ## unreleased
+## 0.2.1
+### Added
+* added validation of cache time to ensure the time is not in the future.
 ### Fixed
-* Fixed validation of flag and enum types
+* Fixed validation of flag and enum types.
+* Fixed case of query without any settings.
+* all datetime usages are now set to utc to avoid time travel.
 ## 0.2.0
 ### Changed
 * `/rules/search` and `/rules/query` have been changed to `POST`

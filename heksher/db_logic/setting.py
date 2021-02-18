@@ -99,7 +99,7 @@ class SettingMixin(DBLogicBase):
                     name=setting.name,
                     type=str(setting.type),
                     default_value=str(orjson.dumps(setting.default_value), 'utf-8'),
-                    last_touch_time=datetime.now(),
+                    last_touch_time=datetime.utcnow(),
                     metadata=str(orjson.dumps(setting.metadata), 'utf-8')
                 )
             )
@@ -134,7 +134,7 @@ class SettingMixin(DBLogicBase):
             name: the name of the setting to update
             timestamp: the time to set the last_touch_time, defaults to datetime.now
         """
-        timestamp = timestamp or datetime.now()
+        timestamp = timestamp or datetime.utcnow()
         await self.db.execute(
             settings.update().where(settings.c.name == name).values(last_touch_time=timestamp)
         )

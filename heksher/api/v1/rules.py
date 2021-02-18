@@ -140,6 +140,14 @@ class QueryRulesInput(ORJSONModel):
             raise ValueError('cannot accept datetime with timezone')
         return v
 
+    @validator('cache_time')
+    @classmethod
+    def no_future(cls, v: Optional[datetime]):
+        now = datetime.utcnow()
+        if now < v:
+            raise ValueError('got cache time in the future')
+        return v
+
 
 # https://github.com/tiangolo/fastapi/issues/2724
 class QueryRulesOutput_Rule(ORJSONModel):
@@ -176,13 +184,16 @@ async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
             return PlainTextResponse(f'the following are not valid context features: {not_context_features}',
                                      status_code=status.HTTP_404_NOT_FOUND)
 
-    not_settings = await app.db_logic.get_not_found_setting_names(input.setting_names)
-    if not_settings:
-        return PlainTextResponse(f'the following are not setting names: {not_settings}',
-                                 status_code=status.HTTP_404_NOT_FOUND)
+    if input.setting_names:
+        not_settings = await app.db_logic.get_not_found_setting_names(input.setting_names)
+        if not_settings:
+            return PlainTextResponse(f'the following are not setting names: {not_settings}',
+                                     status_code=status.HTTP_404_NOT_FOUND)
 
-    query_result = await app.db_logic.query_rules(input.setting_names, input.context_features_options,
-                                                  input.cache_time, input.include_metadata)
+        query_result = await app.db_logic.query_rules(input.setting_names, input.context_features_options,
+                                                      input.cache_time, input.include_metadata)
+    else:
+        query_result = {}
 
     if input.include_metadata:
         return QueryRulesOutputWithMetadata(
