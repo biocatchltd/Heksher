@@ -1,6 +1,8 @@
 # Heksher Changelog
 ## unreleased major
 ## unreleased
+### Internal
+* Added `deployment` section.
 ## 0.2.2
 ### Fixed
 * patched a bug in FastAPI where a 204 response would still have content
