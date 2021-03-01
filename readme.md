@@ -44,7 +44,10 @@ Currently, Heksher supports the following environment variables:
 
 The service itself can be run from the docker image [found in dockerhub](https://hub.docker.com/repository/docker/biocatchltd/heksher).
 
-## How to I interface with it?
+## Deployment
+The service doesn't provide any authorization/authentication as a feature. This is handled on our end by a sidecar. We recommend to use the service only internally, and for external usage use authentication/authorization-supporting API Gateway.
+
+## How do I interface with it?
 Heksher supports an HTTP interface. There are many methods that adhere to be REST-ful (and can be viewed in full by
 accessing the `/redoc` route), but the two central routes that are not REST-ful are:
 
