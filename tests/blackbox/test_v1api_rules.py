@@ -519,7 +519,7 @@ def test_patch_rule_sanity(example_rule, app_client):
 
 
 def test_patch_rule_missing(app_client):
-    res = app_client.patch(f'/api/v1/rules/50000', data=json.dumps(
+    res = app_client.patch('/api/v1/rules/50000', data=json.dumps(
         {"value": 5}
     ))
     assert res.status_code == 404
