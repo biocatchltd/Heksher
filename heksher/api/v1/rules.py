@@ -1,4 +1,5 @@
 from datetime import datetime
+from logging import getLogger
 from typing import List, Dict, Optional, Tuple, Union, Any, Literal
 
 from fastapi import APIRouter, Response
@@ -12,6 +13,7 @@ from heksher.app import HeksherApp
 from heksher.setting import Setting
 
 router = APIRouter(prefix='/rules')
+logger = getLogger(__name__)
 
 
 @router.delete('/{rule_id}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
@@ -101,6 +103,30 @@ async def add_rule(input: AddRuleInput, app: HeksherApp = application):
     await app.db_logic.touch_setting(input.setting)
 
     return AddRuleOutput(rule_id=new_id)
+
+
+class PatchRuleInput(ORJSONModel):
+    value: Any = Field(description="the value of the setting in contexts that match the rule")
+
+
+@router.patch('/{rule_id}', status_code=status.HTTP_204_NO_CONTENT)
+async def patch_rule(rule_id: int, input: PatchRuleInput, app: HeksherApp = application):
+    """
+    Modify existing rule's value
+    """
+    rule = await app.db_logic.get_rule(rule_id)
+    if not rule:
+        return PlainTextResponse('rule not found', status_code=status.HTTP_404_NOT_FOUND)
+
+    setting = await app.db_logic.get_setting(rule.setting)
+    assert setting
+
+    if not setting.type.validate(input.value):
+        return PlainTextResponse(f'rule value is incompatible with setting type {setting.type}',
+                                 status_code=status.HTTP_400_BAD_REQUEST)
+
+    await app.db_logic.patch_rule(rule_id, input.value)
+    await app.db_logic.touch_setting(setting.name)
 
 
 class QueryRulesInput(ORJSONModel):

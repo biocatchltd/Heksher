@@ -143,6 +143,16 @@ class RuleMixin(DBLogicBase):
             )
         return rule_id
 
+    async def patch_rule(self, rule_id: int, value: Any) -> None:
+        """
+        Patches existing rule in the database. Supports only changing value.
+        Args:
+            rule_id: Rule ID to patch
+            value: Value to change to
+        """
+        encoded_value = str(orjson.dumps(value), 'utf-8')
+        await self.db.execute(rules.update().where(rules.c.id == rule_id).values(value=encoded_value))
+
     async def query_rules(self, setting_names: List[str],
                           feature_value_options: Optional[Dict[str, Optional[List[str]]]],
                           setting_touch_time_cutoff: Optional[datetime],

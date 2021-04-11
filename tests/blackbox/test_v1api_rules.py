@@ -501,3 +501,32 @@ def test_query_rules_bad_cache_future(metadata: bool, app_client, setup_rules, m
         'cache_time': future_time.isoformat(),
     }))
     assert res.status_code == 422
+
+
+def test_patch_rule_sanity(example_rule, app_client):
+    res = app_client.patch(f'/api/v1/rules/{example_rule}', data=json.dumps(
+        {"value": 5}
+    ))
+    assert res.status_code == 204
+    res = app_client.get(f'/api/v1/rules/{example_rule}')
+    res.raise_for_status()
+    assert res.json() == {
+        'setting': 'size_limit',
+        'value': 5,
+        'feature_values': [['theme', 'bright']],
+        'metadata': {'test': True}
+    }
+
+
+def test_patch_rule_missing(app_client):
+    res = app_client.patch('/api/v1/rules/50000', data=json.dumps(
+        {"value": 5}
+    ))
+    assert res.status_code == 404
+
+
+def test_patch_rule_bad_data(example_rule, app_client):
+    res = app_client.patch(f'/api/v1/rules/{example_rule}', data=json.dumps(
+        {"value": ["d5"]}
+    ))
+    assert res.status_code == 400
