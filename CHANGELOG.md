@@ -1,6 +1,8 @@
 # Heksher Changelog
 ## unreleased major
 ## unreleased
+### Added
+* `patch` method for rules. Existing rules values can be patched using the new method.
 ### Internal
 * Added `deployment` section.
 ## 0.2.2
