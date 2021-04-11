@@ -517,15 +517,16 @@ def test_patch_rule_sanity(example_rule, app_client):
         'metadata': {'test': True}
     }
 
+
 def test_patch_rule_missing(app_client):
     res = app_client.patch(f'/api/v1/rules/50000', data=json.dumps(
         {"value": 5}
     ))
     assert res.status_code == 404
 
+
 def test_patch_rule_bad_data(example_rule, app_client):
     res = app_client.patch(f'/api/v1/rules/{example_rule}', data=json.dumps(
         {"value": ["d5"]}
     ))
     assert res.status_code == 400
-

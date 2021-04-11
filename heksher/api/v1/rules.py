@@ -111,12 +111,14 @@ class PatchRuleInput(ORJSONModel):
 
 @router.patch('/{rule_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def patch_rule(rule_id: int, input: PatchRuleInput, app: HeksherApp = application):
+    """
+    Modify existing rule's value
+    """
     rule = await app.db_logic.get_rule(rule_id)
     if not rule:
         return PlainTextResponse('rule not found', status_code=status.HTTP_404_NOT_FOUND)
 
     setting = await app.db_logic.get_setting(rule.setting)
-    # This cannot happen, as if we have a rule it must have a setting associated with it.
     assert setting
 
     if not setting.type.validate(input.value):
