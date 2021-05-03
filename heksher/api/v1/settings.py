@@ -89,8 +89,8 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
 
     missing_cf = existing_setting_cfs - new_setting_cfs
     if missing_cf:
-        # note: there is a slight potential mislead here. If a user both declares new CFs and omits existing_setting CFs,
-        # the new CFs will not appear in the response. This is fine for now
+        # note: there is a slight potential mislead here. If a user both declares new CFs and omits existing_setting
+        # CFs, the new CFs will not appear in the response. This is fine for now
         incomplete['configurable_features'] = existing_setting.configurable_features
 
     if existing_setting.type > new_setting.type:
@@ -106,7 +106,8 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     # we need to get which metadata keys are changed
     metadata_changed = existing_setting.metadata.keys() ^ new_setting.metadata.keys()
     metadata_changed.update(
-        k for (k, v) in existing_setting.metadata.items() if (k in new_setting.metadata and new_setting.metadata[k] != v)
+        k for (k, v) in existing_setting.metadata.items() if (k in new_setting.metadata and new_setting.metadata[k]
+                                                              != v)
     )
     if metadata_changed:
         logger.info('changing setting metadata',
