@@ -41,6 +41,12 @@ class SettingType(ABC):
     def __eq__(self, other):
         pass
 
+    def __le__(self, other):
+        return self < other or self == other
+
+    def __ge__(self, other):
+        return self > other or self == other
+
     # methods to allow the class to be used as a pydantic field
     @classmethod
     def __get_validators__(cls):
@@ -70,7 +76,19 @@ class PrimitiveSettingType(SettingType):
         self.types = types
 
     def __eq__(self, other):
-        return type(self) is type(other) and self.types == other.types
+        if isinstance(other, PrimitiveSettingType):
+            return self.types == other.types
+        return NotImplemented
+
+    def __lt__(self, other):
+        if isinstance(other, PrimitiveSettingType):
+            return set(self.types) < set(other.types)
+        return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, PrimitiveSettingType):
+            return set(self.types) > set(other.types)
+        return NotImplemented
 
     def __str__(self):
         return self.types[0].__name__
@@ -90,6 +108,21 @@ class IntegerPrimitiveSettingType(PrimitiveSettingType):
         """
         super().__init__((int, float))
 
+    def __eq__(self, other):
+        if isinstance(other, IntegerPrimitiveSettingType):
+            return self.types == other.types
+        return NotImplemented
+
+    def __lt__(self, other):
+        if other is setting_type('float'):
+            return True
+        return super().__lt__(other)
+
+    def __gt__(self, other):
+        if other is setting_type('float'):
+            return False
+        return super().__gt__(other)
+
     def __str__(self):
         return 'int'
 
@@ -107,9 +140,6 @@ class OptionedSettingType(SettingType, ABC):
             options: The options for the type
         """
         self.options = options
-
-    def __eq__(self, other):
-        return type(self) is type(other) and self.options == other.options
 
     @classmethod
     def from_json_list(cls, json_option_list: str):
@@ -132,6 +162,25 @@ class FlagSettingType(OptionedSettingType):
     """
     An option setting type that accepts all lists that are subsets of the options set
     """
+    def __eq__(self, other):
+        if isinstance(other, FlagSettingType):
+            return self.options == other.options
+        return NotImplemented
+
+    def __lt__(self, other):
+        if isinstance(other, PrimitiveSettingType):
+            return False
+        if isinstance(other, FlagSettingType):
+            return self.options < other.options
+        return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, PrimitiveSettingType):
+            return False
+        if isinstance(other, FlagSettingType):
+            return self.options > other.options
+        return NotImplemented
+
     def __str__(self):
         return 'Flags[' + ",".join(sorted(json.dumps(option) for option in self.options)) + ']'
 
@@ -155,6 +204,25 @@ class EnumSettingType(OptionedSettingType):
     """
     An option setting type that accepts all lists that are members of the options set
     """
+    def __eq__(self, other):
+        if isinstance(other, EnumSettingType):
+            return self.options == other.options
+        return NotImplemented
+
+    def __lt__(self, other):
+        if isinstance(other, (PrimitiveSettingType, FlagSettingType)):
+            return False
+        if isinstance(other, EnumSettingType):
+            return self.options < other.options
+        return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, (PrimitiveSettingType, FlagSettingType)):
+            return False
+        if isinstance(other, EnumSettingType):
+            return self.options > other.options
+        return NotImplemented
+
     def __str__(self):
         return 'Enum[' + ",".join(sorted(json.dumps(option) for option in self.options)) + ']'
 
@@ -169,9 +237,6 @@ class SingleGenericSettingType(SettingType, ABC):
     def __init__(self, inner_type: SettingType):
         self.inner_type = inner_type
 
-    def __eq__(self, other):
-        return type(self) is type(other) and self.inner_type == other.inner_type
-
     @classmethod
     def from_generic_param_name(cls, generic_param_name: str):
         """
@@ -184,6 +249,25 @@ class SequenceSettingType(SingleGenericSettingType):
     """
     A generic setting type that accepts only lists of elements conforming to the inner type
     """
+    def __eq__(self, other):
+        if isinstance(other, SequenceSettingType):
+            return self.inner_type == other.inner_type
+        return NotImplemented
+
+    def __lt__(self, other):
+        if isinstance(other, (PrimitiveSettingType, EnumSettingType, FlagSettingType)):
+            return False
+        if isinstance(other, SequenceSettingType):
+            return self.inner_type < other.inner_type
+        return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, (PrimitiveSettingType, EnumSettingType, FlagSettingType)):
+            return False
+        if isinstance(other, SequenceSettingType):
+            return self.inner_type > other.inner_type
+        return NotImplemented
+
     def __str__(self):
         return f'Sequence<{self.inner_type}>'
 
@@ -197,6 +281,25 @@ class MappingSettingType(SingleGenericSettingType):
     """
     A generic setting type that accepts only dicts of strings to elements conforming to the inner type
     """
+    def __eq__(self, other):
+        if isinstance(other, MappingSettingType):
+            return self.inner_type == other.inner_type
+        return NotImplemented
+
+    def __lt__(self, other):
+        if isinstance(other, (PrimitiveSettingType, EnumSettingType, FlagSettingType, SequenceSettingType)):
+            return False
+        if isinstance(other, MappingSettingType):
+            return self.inner_type < other.inner_type
+        return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, (PrimitiveSettingType, EnumSettingType, FlagSettingType, SequenceSettingType)):
+            return False
+        if isinstance(other, MappingSettingType):
+            return self.inner_type > other.inner_type
+        return NotImplemented
+
     def __str__(self):
         return f'Mapping<{self.inner_type}>'
 

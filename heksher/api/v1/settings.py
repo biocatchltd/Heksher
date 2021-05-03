@@ -59,8 +59,8 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     Ensure that a setting exists, creating it if necessary.
     """
     new_setting = input.to_setting()
-    existing = await app.db_logic.get_setting(input.name)
-    if existing is None:
+    existing_setting = await app.db_logic.get_setting(input.name)
+    if existing_setting is None:
         not_cf = await app.db_logic.get_not_found_context_features(input.configurable_features)
         if not_cf:
             return PlainTextResponse(f'{not_cf} are not acceptable context features',
@@ -73,7 +73,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     changed = []
     incomplete = {}
 
-    existing_setting_cfs = frozenset(existing.configurable_features)
+    existing_setting_cfs = frozenset(existing_setting.configurable_features)
     new_setting_cfs = frozenset(new_setting.configurable_features)
 
     new_configurable_features = new_setting_cfs - existing_setting_cfs
@@ -89,24 +89,24 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
 
     missing_cf = existing_setting_cfs - new_setting_cfs
     if missing_cf:
-        # note: there is a slight potential mislead here. If a user both declares new CFs and omits existing CFs,
+        # note: there is a slight potential mislead here. If a user both declares new CFs and omits existing_setting CFs,
         # the new CFs will not appear in the response. This is fine for now
-        incomplete['configurable_features'] = existing.configurable_features
+        incomplete['configurable_features'] = existing_setting.configurable_features
 
-    if existing.type != new_setting.type:
+    if existing_setting.type > new_setting.type:
         return PlainTextResponse(
-            f'setting already exists with conflicting type. Expected {existing.type}, got {new_setting.type}',
-            status_code=status.HTTP_409_CONFLICT
+            f'Setting already exists with conflicting type. Expected {existing_setting.type} (or upgradable one), '
+            f'got {new_setting.type}', status_code=status.HTTP_409_CONFLICT
         )
 
-    if existing.default_value != new_setting.default_value:
+    if existing_setting.default_value != new_setting.default_value:
         to_change['default_value'] = str(orjson.dumps(new_setting.default_value), 'utf-8')
         changed.append('default_value')
 
     # we need to get which metadata keys are changed
-    metadata_changed = existing.metadata.keys() ^ new_setting.metadata.keys()
+    metadata_changed = existing_setting.metadata.keys() ^ new_setting.metadata.keys()
     metadata_changed.update(
-        k for (k, v) in existing.metadata.items() if (k in new_setting.metadata and new_setting.metadata[k] != v)
+        k for (k, v) in existing_setting.metadata.items() if (k in new_setting.metadata and new_setting.metadata[k] != v)
     )
     if metadata_changed:
         logger.info('changing setting metadata',
