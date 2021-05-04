@@ -1,4 +1,8 @@
-from pytest import mark
+import operator
+from itertools import combinations
+from typing import Callable
+
+from pytest import mark, skip
 
 from heksher.setting_types import setting_type
 
@@ -214,3 +218,115 @@ def test_generic_types(gen_kind):
 def test_validation_never_fails(setting_type_name, input):
     st = setting_type(setting_type_name)
     assert isinstance(st.validate(input), bool)
+
+
+@mark.parametrize('cur_setting_type', [
+    'Sequence<Sequence<int>>',
+    'Mapping<str>',
+    'str',
+    'float',
+    'bool',
+    'Flags["hi", "there"]',
+    'Enum[0,1,2,3,4]',
+    'Flags[0,1,2,3,4]'
+])
+@mark.parametrize('other_setting_type_name', [
+    'Sequence<Sequence<int>>',
+    'Mapping<str>',
+    'str',
+    'bool',
+    'int',
+    'Flags["hi", "there"]',
+    'Enum[0,1,2,3,4]',
+    'Flags[0,1,2,3,4]'
+])
+def test_lt_falshish(cur_setting_type: str, other_setting_type_name: str):
+    s_type = setting_type(cur_setting_type)
+    other_s_type = setting_type(other_setting_type_name)
+    assert not s_type < other_s_type
+
+
+@mark.parametrize('cur_setting_type', [
+    'Sequence<Sequence<int>>',
+    'Mapping<str>',
+    'str',
+    'int',
+    'bool',
+    'Flags["hi", "there"]',
+    'Enum[0,1,2,3,4]',
+    'Flags[0,1,2,3,4]'
+])
+@mark.parametrize('other_setting_type_name', [
+    'Sequence<Sequence<int>>',
+    'Mapping<str>',
+    'str',
+    'bool',
+    'float',
+    'Flags["hi", "there"]',
+    'Enum[0,1,2,3,4]',
+    'Flags[0,1,2,3,4]'
+])
+def test_gt_falshish(cur_setting_type: str, other_setting_type_name: str):
+    s_type = setting_type(cur_setting_type)
+    other_s_type = setting_type(other_setting_type_name)
+    assert not s_type > other_s_type
+
+
+@mark.parametrize("cur_setting_type,other_setting_type_name", [
+    ('int', 'float'),
+    ('Flags[0,1]', 'Flags[0,1,2,3,4]'),
+    ('Sequence<Sequence<int>>', 'Sequence<Sequence<float>>'),
+    ('Mapping<int>', 'Mapping<float>'),
+    ('Enum[0,1]', 'Enum[0,1,2,3,4]'),
+])
+def test_lt_truish(cur_setting_type: str, other_setting_type_name: str):
+    s_type = setting_type(cur_setting_type)
+    other_s_type = setting_type(other_setting_type_name)
+    assert s_type < other_s_type
+
+
+@mark.parametrize("other_setting_type_name,cur_setting_type", [
+    ('int', 'float'),
+    ('Flags[0,1]', 'Flags[0,1,2,3,4]'),
+    ('Sequence<Sequence<int>>', 'Sequence<Sequence<float>>'),
+    ('Mapping<int>', 'Mapping<float>'),
+    ('Enum[0,1]', 'Enum[0,1,2,3,4]'),
+])
+def test_gt_truish(cur_setting_type: str, other_setting_type_name: str):
+    s_type = setting_type(cur_setting_type)
+    other_s_type = setting_type(other_setting_type_name)
+    assert s_type > other_s_type
+
+
+possible_comp_values = ['Sequence<Sequence<int>>', 'Mapping<str>', 'str', 'int', 'bool', 'float',
+                        'Flags["hi", "there"]', 'Enum[0,1,2,3,4]', 'Flags[0,1]', 'Flags[0,1,2,3]',
+                        'Flags[0,1,2,3,4,5]', 'Sequence<Flags[0,1]>', 'Sequence<Flags[0,1,2,3]>',
+                        'Sequence<Flags[0,1,2,3,4,5]>']
+
+
+@mark.parametrize('a,b,c', combinations(possible_comp_values, 3))
+@mark.parametrize('op', [operator.lt, operator.gt])
+def test_transitivity(op: Callable, a: str, b: str, c:str):
+    a_setting_type = setting_type(a)
+    b_setting_type = setting_type(b)
+    c_setting_type = setting_type(c)
+
+    assert (op(a_setting_type,c_setting_type)) or \
+           (not op(a_setting_type, b_setting_type) or not op(b_setting_type, c_setting_type))
+
+
+@mark.parametrize('a', possible_comp_values)
+@mark.parametrize('op', [operator.lt, operator.gt])
+def test_irreflexivity(op: Callable, a: str):
+    a_setting_type = setting_type(a)
+
+    assert not op(a_setting_type, a_setting_type)
+
+
+@mark.parametrize('a,b', combinations(possible_comp_values, 2))
+@mark.parametrize('op', [operator.lt, operator.gt])
+def test_asymmetricity(op: Callable, a: str, b: str):
+    a_setting_type = setting_type(a)
+    b_setting_type = setting_type(b)
+
+    assert not (op(a_setting_type, b_setting_type) and op(b_setting_type, a_setting_type))
