@@ -114,12 +114,14 @@ class IntegerPrimitiveSettingType(PrimitiveSettingType):
         return NotImplemented
 
     def __lt__(self, other):
-        if other is setting_type('float'):
-            return True
+        if type(other) == PrimitiveSettingType:
+            # since we impose additional requirements over int values, true primitives are lt only if we encompass their type.
+            return set(self.types) <= set(other.types)
         return super().__lt__(other)
 
     def __gt__(self, other):
-        if other is setting_type('float'):
+        if type(other) == PrimitiveSettingType:
+            # since we impose additional requirements over int values, we are never greater then true primitives.
             return False
         return super().__gt__(other)
 

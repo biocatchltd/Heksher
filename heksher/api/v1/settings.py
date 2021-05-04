@@ -59,8 +59,8 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     Ensure that a setting exists, creating it if necessary.
     """
     new_setting = input.to_setting()
-    existing_setting = await app.db_logic.get_setting(input.name)
-    if existing_setting is None:
+    existing = await app.db_logic.get_setting(input.name)
+    if existing is None:
         not_cf = await app.db_logic.get_not_found_context_features(input.configurable_features)
         if not_cf:
             return PlainTextResponse(f'{not_cf} are not acceptable context features',
@@ -73,7 +73,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     changed = []
     incomplete = {}
 
-    existing_setting_cfs = frozenset(existing_setting.configurable_features)
+    existing_setting_cfs = frozenset(existing.configurable_features)
     new_setting_cfs = frozenset(new_setting.configurable_features)
 
     new_configurable_features = new_setting_cfs - existing_setting_cfs
@@ -91,33 +91,38 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     if missing_cf:
         # note: there is a slight potential mislead here. If a user both declares new CFs and omits existing_setting
         # CFs, the new CFs will not appear in the response. This is fine for now
-        incomplete['configurable_features'] = existing_setting.configurable_features
+        incomplete['configurable_features'] = existing.configurable_features
 
-    if existing_setting.type > new_setting.type:
+    # NOTE: keep the outer if-else clause as is because of the setting types operators.
+    if existing.type <= new_setting.type:
+        if existing.type != new_setting.type:
+            to_change['type'] = str(new_setting.type)
+            changed.append('type')
+
+        if existing.default_value != new_setting.default_value:
+            to_change['default_value'] = str(orjson.dumps(new_setting.default_value), 'utf-8')
+            changed.append('default_value')
+
+        # we need to get which metadata keys are changed
+        metadata_changed = existing.metadata.keys() ^ new_setting.metadata.keys()
+        metadata_changed.update(
+            k for (k, v) in existing.metadata.items() if (k in new_setting.metadata and new_setting.metadata[k]
+                                                                  != v)
+        )
+        if metadata_changed:
+            logger.info('changing setting metadata',
+                        extra={'setting_name': new_setting.name, 'new_metadata': new_setting.metadata})
+            changed.extend('metadata.' + k for k in sorted(metadata_changed))
+            to_change['metadata'] = str(orjson.dumps(new_setting.metadata), 'utf-8')
+
+        if to_change or new_configurable_features:
+            await app.db_logic.update_setting(input.name, to_change, new_configurable_features)
+        return DeclareSettingOutput(created=False, changed=changed, incomplete=incomplete)
+    else:
         return PlainTextResponse(
-            f'Setting already exists with conflicting type. Expected {existing_setting.type} (or upgradable one), '
+            f'Setting already exists with conflicting type. Expected {existing.type} (or upgradable one), '
             f'got {new_setting.type}', status_code=status.HTTP_409_CONFLICT
         )
-
-    if existing_setting.default_value != new_setting.default_value:
-        to_change['default_value'] = str(orjson.dumps(new_setting.default_value), 'utf-8')
-        changed.append('default_value')
-
-    # we need to get which metadata keys are changed
-    metadata_changed = existing_setting.metadata.keys() ^ new_setting.metadata.keys()
-    metadata_changed.update(
-        k for (k, v) in existing_setting.metadata.items() if (k in new_setting.metadata and new_setting.metadata[k]
-                                                              != v)
-    )
-    if metadata_changed:
-        logger.info('changing setting metadata',
-                    extra={'setting_name': new_setting.name, 'new_metadata': new_setting.metadata})
-        changed.extend('metadata.' + k for k in sorted(metadata_changed))
-        to_change['metadata'] = str(orjson.dumps(new_setting.metadata), 'utf-8')
-
-    if to_change or new_configurable_features:
-        await app.db_logic.update_setting(input.name, to_change, new_configurable_features)
-    return DeclareSettingOutput(created=False, changed=changed, incomplete=incomplete)
 
 
 @router.delete('/{name}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
