@@ -2,7 +2,7 @@ import operator
 from itertools import combinations
 from typing import Callable
 
-from pytest import mark, skip
+from pytest import mark
 
 from heksher.setting_types import setting_type, SettingType
 
