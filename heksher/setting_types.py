@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 import json
 import re
 from abc import ABC, abstractmethod
@@ -39,6 +42,21 @@ class SettingType(ABC):
 
     @abstractmethod
     def __eq__(self, other):
+        pass
+
+    @abstractmethod
+    def __lt__(self, other: SettingType):
+        pass
+
+    @abstractmethod
+    def __gt__(self, other: SettingType):
+        """
+        Type a >= type b if every element of b is also a member of a.
+        Args:
+            other: The compared setting type
+        Returns:
+            Whether or not the current setting type > the other setting type
+        """
         pass
 
     def __le__(self, other):
