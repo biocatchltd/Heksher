@@ -306,12 +306,12 @@ possible_comp_values = ['Sequence<Sequence<int>>', 'Mapping<str>', 'str', 'int',
 
 @mark.parametrize('a,b,c', combinations(possible_comp_values, 3))
 @mark.parametrize('op', [operator.lt, operator.gt])
-def test_transitivity(op: Callable, a: str, b: str, c:str):
+def test_transitivity(op: Callable, a: str, b: str, c: str):
     a_setting_type = setting_type(a)
     b_setting_type = setting_type(b)
     c_setting_type = setting_type(c)
 
-    assert (op(a_setting_type,c_setting_type)) or \
+    assert (op(a_setting_type, c_setting_type)) or \
            (not op(a_setting_type, b_setting_type) or not op(b_setting_type, c_setting_type))
 
 
