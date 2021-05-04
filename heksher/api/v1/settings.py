@@ -109,8 +109,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     # we need to get which metadata keys are changed
     metadata_changed = existing.metadata.keys() ^ new_setting.metadata.keys()
     metadata_changed.update(
-        k for (k, v) in existing.metadata.items() if (k in new_setting.metadata and new_setting.metadata[k]
-                                                              != v)
+        k for (k, v) in existing.metadata.items() if (k in new_setting.metadata and new_setting.metadata[k] != v)
     )
     if metadata_changed:
         logger.info('changing setting metadata',

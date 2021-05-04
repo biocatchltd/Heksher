@@ -115,7 +115,8 @@ class IntegerPrimitiveSettingType(PrimitiveSettingType):
 
     def __lt__(self, other):
         if type(other) == PrimitiveSettingType:
-            # since we impose additional requirements over int values, true primitives are lt only if we encompass their type.
+            # since we impose additional requirements over int values, true primitives are lt only if we encompass their
+            # type.
             return set(self.types) <= set(other.types)
         return super().__lt__(other)
 
