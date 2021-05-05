@@ -1,6 +1,10 @@
+import operator
+from itertools import combinations
+from typing import Callable
+
 from pytest import mark
 
-from heksher.setting_types import setting_type
+from heksher.setting_types import setting_type, SettingType
 
 
 def test_primitives():
@@ -214,3 +218,67 @@ def test_generic_types(gen_kind):
 def test_validation_never_fails(setting_type_name, input):
     st = setting_type(setting_type_name)
     assert isinstance(st.validate(input), bool)
+
+
+@mark.parametrize('a', [
+    setting_type('Sequence<Sequence<int>>'),
+    setting_type('Mapping<str>'),
+    setting_type('str'),
+    setting_type('int'),
+    setting_type('bool'),
+    setting_type('Flags["hi", "there"]'),
+    setting_type('Enum[0,1,2,3,4]'),
+    setting_type('Flags[0,1,2,3,4]')
+])
+@mark.parametrize('b', [
+    setting_type('Sequence<Sequence<int>>'),
+    setting_type('Mapping<str>'),
+    setting_type('str'),
+    setting_type('bool'),
+    setting_type('float'),
+    setting_type('Flags["hi", "there"]'),
+    setting_type('Enum[0,1,2,3,4]'),
+    setting_type('Flags[0,1,2,3,4]')
+])
+def test_op_falshish(a: SettingType, b: SettingType):
+    assert not a > b
+    assert not b < a
+
+
+@mark.parametrize("a,b", [
+    (setting_type('int'), setting_type('float')),
+    (setting_type('Flags[0,1]'), setting_type('Flags[0,1,2,3,4]')),
+    (setting_type('Sequence<Sequence<int>>'), setting_type('Sequence<Sequence<float>>')),
+    (setting_type('Mapping<int>'), setting_type('Mapping<float>')),
+    (setting_type('Enum[0,1]'), setting_type('Enum[0,1,2,3,4]')),
+])
+def test_op_truish(a: SettingType, b: SettingType):
+    assert a < b
+    assert b > a
+
+
+possible_comp_values = [setting_type('Sequence<Sequence<int>>'), setting_type('Mapping<str>'), setting_type('str'),
+                        setting_type('int'), setting_type('bool'), setting_type('float'),
+                        setting_type('Flags["hi", "there"]'), setting_type('Enum[0,1,2,3,4]'),
+                        setting_type('Flags[0,1]'), setting_type('Flags[0,1,2,3]'),
+                        setting_type('Flags[0,1,2,3,4,5]'), setting_type('Sequence<Flags[0,1]>'),
+                        setting_type('Sequence<Flags[0,1,2,3]>'), setting_type('Sequence<Flags[0,1,2,3,4,5]>')]
+
+
+@mark.parametrize('a,b,c', combinations(possible_comp_values, 3))
+@mark.parametrize('op', [operator.lt, operator.gt])
+def test_op_transitivity(op: Callable, a: SettingType, b: SettingType, c: SettingType):
+    assert (op(a, c)) or \
+           (not op(a, b) or not op(b, c))
+
+
+@mark.parametrize('a', possible_comp_values)
+@mark.parametrize('op', [operator.lt, operator.gt])
+def test_op_irreflexivity(op: Callable, a: SettingType):
+    assert not op(a, a)
+
+
+@mark.parametrize('a,b', combinations(possible_comp_values, 2))
+@mark.parametrize('op', [operator.lt, operator.gt])
+def test_op_asymmetricity(op: Callable, a: SettingType, b: SettingType):
+    assert not (op(a, b) and op(b, a))

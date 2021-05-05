@@ -89,15 +89,18 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
 
     missing_cf = existing_setting_cfs - new_setting_cfs
     if missing_cf:
-        # note: there is a slight potential mislead here. If a user both declares new CFs and omits existing CFs,
-        # the new CFs will not appear in the response. This is fine for now
+        # note: there is a slight potential mislead here. If a user both declares new CFs and omits existing
+        # CFs, the new CFs will not appear in the response. This is fine for now
         incomplete['configurable_features'] = existing.configurable_features
 
-    if existing.type != new_setting.type:
+    if not existing.type <= new_setting.type:
         return PlainTextResponse(
-            f'setting already exists with conflicting type. Expected {existing.type}, got {new_setting.type}',
-            status_code=status.HTTP_409_CONFLICT
+            f'Setting already exists with conflicting type. Expected {existing.type} (or upgradable one), '
+            f'got {new_setting.type}', status_code=status.HTTP_409_CONFLICT
         )
+    if existing.type != new_setting.type:
+        to_change['type'] = str(new_setting.type)
+        changed.append('type')
 
     if existing.default_value != new_setting.default_value:
         to_change['default_value'] = str(orjson.dumps(new_setting.default_value), 'utf-8')
