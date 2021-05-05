@@ -508,6 +508,7 @@ def test_patch_rule_sanity(example_rule, app_client):
         {"value": 5}
     ))
     assert res.status_code == 204
+    assert not res.content
     res = app_client.get(f'/api/v1/rules/{example_rule}')
     res.raise_for_status()
     assert res.json() == {

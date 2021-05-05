@@ -2,6 +2,8 @@
 ## unreleased
 ### Added
 * Added the ability of type upgrade via the 'declare' route.
+### Fixed
+* rule patch response no longer has content
 ## 0.2.3
 ### Added
 * `patch` method for rules. Existing rules values can be patched using the new method.

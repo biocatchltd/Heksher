@@ -109,7 +109,7 @@ class PatchRuleInput(ORJSONModel):
     value: Any = Field(description="the value of the setting in contexts that match the rule")
 
 
-@router.patch('/{rule_id}', status_code=status.HTTP_204_NO_CONTENT)
+@router.patch('/{rule_id}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def patch_rule(rule_id: int, input: PatchRuleInput, app: HeksherApp = application):
     """
     Modify existing rule's value
