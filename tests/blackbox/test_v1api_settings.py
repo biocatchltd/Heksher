@@ -150,14 +150,23 @@ def test_declare_conflict(size_limit_setting, app_client):
 
 
 def test_declare_type_upgrade(size_limit_setting, app_client):
-    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+    upgraded_type = 'float'
+    
+    updated_setting = {
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
-        'type': 'float',
+        'type': upgraded_type,
         'default_value': 200,
         'metadata': {'testing': True}
-    }))
-    assert res.status_code == 200
+    }
+
+    res = app_client.put('api/v1/settings/declare', data=json.dumps(updated_setting))
+    res.raise_for_status()
+    assert res.json() == {'changed': ['type'], 'created': False, 'incomplete': {}}
+
+    res = app_client.get('api/v1/settings/size_limit')
+    res.raise_for_status()
+    assert res.json() == updated_setting
 
 
 def test_declare_incomplete(size_limit_setting, app_client):
