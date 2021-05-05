@@ -151,7 +151,6 @@ def test_declare_conflict(size_limit_setting, app_client):
 
 def test_declare_type_upgrade(size_limit_setting, app_client):
     upgraded_type = 'float'
-    
     updated_setting = {
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
