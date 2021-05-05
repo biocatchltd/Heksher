@@ -149,6 +149,17 @@ def test_declare_conflict(size_limit_setting, app_client):
     assert res.status_code == 409
 
 
+def test_declare_type_upgrade(size_limit_setting, app_client):
+    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme'],
+        'type': 'float',
+        'default_value': 200,
+        'metadata': {'testing': True}
+    }))
+    assert res.status_code == 200
+
+
 def test_declare_incomplete(size_limit_setting, app_client):
     res = app_client.put('api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
