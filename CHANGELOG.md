@@ -1,5 +1,9 @@
 # Heksher Changelog
 ## unreleased
+## 0.3.0
+### Added
+* Added the ability of type upgrade via the 'declare' route.
+
 ## 0.2.3
 ### Added
 * `patch` method for rules. Existing rules values can be patched using the new method.
