@@ -1,5 +1,5 @@
 # Heksher Changelog
-## unreleased
+## 0.3.0
 ### Added
 * Added the ability of type upgrade via the 'declare' route.
 ### Fixed
