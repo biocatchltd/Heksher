@@ -1,4 +1,6 @@
 # Heksher Changelog
+## Unreleased
+* Moved sentry initialization to the end of the app startup
 ## 0.3.0
 ### Added
 * Added the ability of type upgrade via the 'declare' route.
