@@ -47,13 +47,6 @@ class HeksherApp(FastAPI):
             getLogger('heksher').addHandler(handler)
             getLogger('heksher').setLevel(logstash_settings.level)
 
-        sentry_dsn = sentry_dsn_ev.get()
-        if sentry_dsn:
-            try:
-                sentry_sdk.init(sentry_dsn, release=f"Heksher@{__version__}")
-            except Exception:
-                logger.exception("cannot start sentry")
-
         db_connection_string = connection_string.get()
 
         self.db = Database(db_connection_string)
@@ -63,6 +56,13 @@ class HeksherApp(FastAPI):
         # assert that the db logic holds up
         expected_context_features = startup_context_features.get()
         await self.db_logic.ensure_context_features(expected_context_features)
+
+        sentry_dsn = sentry_dsn_ev.get()
+        if sentry_dsn:
+            try:
+                sentry_sdk.init(sentry_dsn, release=f"Heksher@{__version__}")
+            except Exception:
+                logger.exception("cannot start sentry")
 
     async def shutdown(self):
         await wait_for(self.db.disconnect(), timeout=10)
