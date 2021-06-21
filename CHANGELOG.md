@@ -1,5 +1,6 @@
 # Heksher Changelog
 ## Unreleased
+### Changed
 * Moved sentry initialization to the end of the app startup
 ## 0.3.0
 ### Added
