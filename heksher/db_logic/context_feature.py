@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Sequence, Iterable, AbstractSet
+from typing import AbstractSet, Iterable, Sequence
 
 from sqlalchemy import select
 

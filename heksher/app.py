@@ -1,6 +1,6 @@
 import re
 from asyncio import wait_for
-from logging import getLogger, INFO
+from logging import INFO, getLogger
 
 import sentry_sdk
 from aiologstash import create_tcp_handler

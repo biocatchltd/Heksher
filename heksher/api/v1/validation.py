@@ -1,5 +1,12 @@
-from pydantic import constr  # pytype: disable=import-error
+from typing import TYPE_CHECKING
 
-ContextFeatureName = constr(regex='[a-zA-Z_0-9]+$')
-ContextFeatureValue = constr(regex='[a-zA-Z_0-9]+$')
-SettingName = constr(regex='[a-zA-Z_0-9]+$')
+from pydantic import constr
+
+if TYPE_CHECKING:
+    ContextFeatureName = str
+    ContextFeatureValue = str
+    SettingName = str
+else:
+    ContextFeatureName = constr(regex='[a-zA-Z_0-9]+$')
+    ContextFeatureValue = constr(regex='[a-zA-Z_0-9]+$')
+    SettingName = constr(regex='[a-zA-Z_0-9]+$')

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-
 import json
 import re
 from abc import ABC, abstractmethod
+from typing import AbstractSet, Pattern, Sequence, Tuple, Type
+
 from orjson import loads
-from typing import Tuple, Pattern, Type, AbstractSet, Sequence
 
 from heksher.util import JsonPrimitiveSet
 
@@ -176,7 +176,7 @@ class OptionedSettingType(SettingType, ABC):
         if not isinstance(options, list):
             raise TypeError(f'expected list, got {type(options)}')
         option_set = JsonPrimitiveSet(options)
-        return cls(option_set)  # pytype: disable=not-instantiable
+        return cls(option_set)
 
 
 class FlagSettingType(OptionedSettingType):
@@ -263,7 +263,7 @@ class SingleGenericSettingType(SettingType, ABC):
         """
         utility method to parse inner parameter
         """
-        return cls(setting_type(generic_param_name))  # pytype: disable=not-instantiable
+        return cls(setting_type(generic_param_name))
 
 
 class SequenceSettingType(SingleGenericSettingType):
@@ -364,11 +364,11 @@ def setting_type(name: str) -> SettingType:
     primitive = _primitives.get(name)
     if primitive:
         return primitive
-    for (optioned_pattern, factory) in _with_options:
+    for (optioned_pattern, optioned_factory) in _with_options:
         if match := optioned_pattern.match(name):
-            return factory.from_json_list(name[match.end():])
-    for (generic_pattern, factory) in _generics:
+            return optioned_factory.from_json_list(name[match.end():])
+    for (generic_pattern, generic_factory) in _generics:
         if match := generic_pattern.match(name):
-            return factory.from_generic_param_name(match.group("param").strip())
+            return generic_factory.from_generic_param_name(match.group("param").strip())
 
     raise ValueError(f'cannot resolve setting type {name}')

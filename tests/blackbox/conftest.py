@@ -1,3 +1,4 @@
+import json
 import sys
 from subprocess import run
 
@@ -7,9 +8,6 @@ from starlette.testclient import TestClient
 from yellowbox.extras.postgresql import PostgreSQLService
 
 from heksher.main import app
-
-# apparently this works
-from tests.blackbox.test_v1api_settings import size_limit_setting  # noqa: F401
 
 
 @fixture(scope='session')
@@ -52,3 +50,20 @@ def app_client(monkeypatch, sql_service, purge_sql):
 
     with TestClient(app) as app_client:
         yield app_client
+
+
+@fixture
+def size_limit_setting(app_client):
+    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True}
+    }))
+    res.raise_for_status()
+    assert res.json() == {
+        'created': True,
+        'changed': [],
+        'incomplete': {}
+    }

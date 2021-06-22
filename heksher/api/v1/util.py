@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import orjson
-from fastapi import Depends, Request, APIRouter
-from pydantic import BaseModel  # pytype: disable=import-error
+from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel
 
 
 def orjson_dumps(v, **kwargs):
     return str(orjson.dumps(v, **kwargs), 'utf-8')
 
 
-class ORJSONModel(BaseModel):  # pytype: disable=base-class-error
+class ORJSONModel(BaseModel):
     """
     BaseModel with default orjson loads, dumps
     """

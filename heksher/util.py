@@ -1,4 +1,4 @@
-from typing import AbstractSet, Union, Any, Tuple, Set
+from typing import AbstractSet, Any, Set, Tuple, Union
 
 
 class JsonPrimitiveSet(AbstractSet[Union[str, bool, float, int]]):

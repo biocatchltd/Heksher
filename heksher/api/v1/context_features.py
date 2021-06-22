@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Response
 from starlette import status
 
-from heksher.api.v1.util import application, ORJSONModel, router as v1_router
+from heksher.api.v1.util import ORJSONModel, application, router as v1_router
 from heksher.api.v1.validation import ContextFeatureName
 from heksher.app import HeksherApp
 

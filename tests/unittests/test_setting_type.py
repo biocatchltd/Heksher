@@ -4,7 +4,7 @@ from typing import Callable
 
 from pytest import mark
 
-from heksher.setting_types import setting_type, SettingType
+from heksher.setting_types import SettingType, setting_type
 
 
 def test_primitives():
