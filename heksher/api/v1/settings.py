@@ -69,7 +69,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
         await app.db_logic.add_setting(new_setting)
         return DeclareSettingOutput(created=True, changed=[], incomplete={})
 
-    to_change: Dict[str, Union[str, datetime]] = {'last_touch_time': datetime.utcnow()}
+    to_change: Dict[str, Any] = {'last_touch_time': datetime.utcnow()}
     changed = []
     incomplete = {}
 

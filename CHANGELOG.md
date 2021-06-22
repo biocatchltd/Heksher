@@ -2,6 +2,7 @@
 ## Unreleased
 ### Changed
 * Moved sentry initialization to the end of the app startup
+### Internal  
 * Changed linters to mypy and isort
 ## 0.3.0
 ### Added
