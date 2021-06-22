@@ -4,14 +4,13 @@ from asyncio.tasks import gather
 from datetime import datetime
 from itertools import groupby
 from operator import itemgetter
-from typing import Dict, Optional, Any, List, Tuple, NamedTuple, Sequence
+from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 import orjson
-from sqlalchemy import select, join
+from sqlalchemy import join, select
 
 from heksher.db_logic.logic_base import DBLogicBase
-from heksher.db_logic.metadata import rules, conditions, settings, context_features
-
+from heksher.db_logic.metadata import conditions, context_features, rules, settings
 # This class should be used in the context of db logic api only
 from heksher.db_logic.util import inline_sql
 
@@ -184,9 +183,10 @@ class RuleMixin(DBLogicBase):
         else:
             applicable_settings = setting_names
 
+        applicable_rules: Dict[int, Tuple[Tuple[str, str], ...]] = {}
+
         if not applicable_settings:
             # shortcut in case all settings are up-to-date
-            applicable_rules = {}
             rule_results = []
         else:
             # inv_match is a mixin condition, if an exact-match condition returns True for it, the rule associated with
@@ -236,7 +236,6 @@ class RuleMixin(DBLogicBase):
             ORDER BY rules.id, context_features.index;
             """
             conditions_results = await self.db.fetch_all(query)
-            applicable_rules: Dict[int, Tuple[Tuple[str, str], ...]] = {}
             # group all the conditions by rules
             for rule_id, rows in groupby(conditions_results, key=itemgetter('id')):
                 rule_conditions = tuple((row['context_feature'], row['feature_value']) for row in rows)

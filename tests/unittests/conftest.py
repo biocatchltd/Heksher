@@ -1,10 +1,10 @@
 from unittest.mock import AsyncMock
 
-from heksher.db_logic import DBLogic
 from pytest import fixture
 from starlette.testclient import TestClient
 
 import heksher.app as app_mod
+from heksher.db_logic import DBLogic
 from heksher.main import app
 
 

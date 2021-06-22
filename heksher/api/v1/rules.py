@@ -1,14 +1,14 @@
 from datetime import datetime
 from logging import getLogger
-from typing import List, Dict, Optional, Tuple, Union, Any, Literal
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from fastapi import APIRouter, Response
-from pydantic import Field, validator  # pytype: disable=import-error
+from pydantic import Field, validator
 from starlette import status
 from starlette.responses import PlainTextResponse
 
-from heksher.api.v1.util import application, ORJSONModel, router as v1_router
-from heksher.api.v1.validation import SettingName, ContextFeatureName, ContextFeatureValue
+from heksher.api.v1.util import ORJSONModel, application, router as v1_router
+from heksher.api.v1.validation import ContextFeatureName, ContextFeatureValue, SettingName
 from heksher.app import HeksherApp
 from heksher.setting import Setting
 
@@ -174,6 +174,10 @@ class QueryRulesInput(ORJSONModel):
             raise ValueError('got cache time in the future')
         return v
 
+    @property
+    def valid_context_features_options(cls) -> Optional[Dict[str, Optional[List[str]]]]:
+        return cls.context_features_options  # type: ignore
+
 
 # https://github.com/tiangolo/fastapi/issues/2724
 class QueryRulesOutput_Rule(ORJSONModel):
@@ -199,7 +203,7 @@ class QueryRulesOutputWithMetadata(ORJSONModel):
     )
 
 
-@router.post('/query', response_model=Union[QueryRulesOutputWithMetadata, QueryRulesOutput])
+@router.post('/query', response_model=Union[QueryRulesOutputWithMetadata, QueryRulesOutput])  # type: ignore
 async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
     """
     Query settings for rules for a specific set of potential contexts.
@@ -216,7 +220,7 @@ async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
             return PlainTextResponse(f'the following are not setting names: {not_settings}',
                                      status_code=status.HTTP_404_NOT_FOUND)
 
-        query_result = await app.db_logic.query_rules(input.setting_names, input.context_features_options,
+        query_result = await app.db_logic.query_rules(input.setting_names, input.valid_context_features_options,
                                                       input.cache_time, input.include_metadata)
     else:
         query_result = {}

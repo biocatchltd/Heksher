@@ -1,10 +1,9 @@
 import re
-from typing import Collection, Tuple, TypeVar, Sequence, Hashable, Dict, Union
+from typing import Collection, Dict, Hashable, Sequence, Tuple, TypeVar, Union
 
 T = TypeVar('T', bound=Hashable)
 
 
-# pytype: disable=not-supported-yet
 def supersequence_new_elements(supersequence: Sequence[T], subsequence: Collection[T]) \
         -> Union[Collection[Tuple[T, int]], None]:
     """
@@ -49,8 +48,6 @@ def supersequence_new_elements(supersequence: Sequence[T], subsequence: Collecti
     )
     return tuple(new_elements.items())
 
-
-# pytype: enable=not-supported-yet
 
 INLINE_VALIDATION_PATTERN = re.compile(r'[a-zA-Z0-9_\s]+')
 

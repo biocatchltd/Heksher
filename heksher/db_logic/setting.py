@@ -1,14 +1,14 @@
-from _operator import itemgetter
 from asyncio import gather
 from datetime import datetime
 from itertools import groupby
-from typing import Optional, Any, Mapping, Collection, List, Iterable, NamedTuple, Dict
+from typing import Any, Collection, Dict, Iterable, List, Mapping, NamedTuple, Optional
 
 import orjson
-from sqlalchemy import select, join
+from _operator import itemgetter
+from sqlalchemy import join, select
 
 from heksher.db_logic.logic_base import DBLogicBase
-from heksher.db_logic.metadata import settings, configurable, context_features
+from heksher.db_logic.metadata import configurable, context_features, settings
 from heksher.db_logic.util import inline_sql
 from heksher.setting import Setting
 from heksher.setting_types import setting_type

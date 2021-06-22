@@ -1,23 +1,6 @@
 import json
 
-from pytest import fixture, mark
-
-
-@fixture
-def size_limit_setting(app_client):
-    res = app_client.put('api/v1/settings/declare', data=json.dumps({
-        'name': 'size_limit',
-        'configurable_features': ['user', 'theme'],
-        'type': 'int',
-        'default_value': 200,
-        'metadata': {'testing': True}
-    }))
-    res.raise_for_status()
-    assert res.json() == {
-        'created': True,
-        'changed': [],
-        'incomplete': {}
-    }
+from pytest import mark
 
 
 def test_declare_new_setting(size_limit_setting, app_client):

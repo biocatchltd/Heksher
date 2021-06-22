@@ -1,9 +1,9 @@
-from os import getenv
 from logging.config import fileConfig
+from os import getenv
 
 from sqlalchemy import create_engine
-from alembic import context
 
+from alembic import context
 from heksher.db_logic.metadata import metadata
 
 # this is the Alembic Config object, which provides

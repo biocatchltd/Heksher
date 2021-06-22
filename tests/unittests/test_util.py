@@ -1,6 +1,6 @@
 from pytest import mark, raises
 
-from heksher.db_logic.util import supersequence_new_elements, inline_sql
+from heksher.db_logic.util import inline_sql, supersequence_new_elements
 
 
 @mark.parametrize('a,b,new', [

@@ -1,10 +1,10 @@
 import sys
 from os import getenv
 
-from alembic.config import Config
-from alembic import command
 from sqlalchemy import create_engine
 
+from alembic import command
+from alembic.config import Config
 from heksher.db_logic.metadata import metadata
 
 

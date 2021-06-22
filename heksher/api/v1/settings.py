@@ -1,15 +1,15 @@
 from datetime import datetime
 from logging import getLogger
-from typing import List, Dict, Any, Union
+from typing import Any, Dict, List, Union
 
 import orjson
 from fastapi import APIRouter, Response
-from pydantic import Field, root_validator  # pytype: disable=import-error
+from pydantic import Field, root_validator
 from starlette import status
 from starlette.responses import PlainTextResponse
 
-from heksher.api.v1.util import application, ORJSONModel, router as v1_router
-from heksher.api.v1.validation import SettingName, ContextFeatureName
+from heksher.api.v1.util import ORJSONModel, application, router as v1_router
+from heksher.api.v1.validation import ContextFeatureName, SettingName
 from heksher.app import HeksherApp
 from heksher.setting import Setting
 from heksher.setting_types import SettingType
@@ -69,7 +69,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
         await app.db_logic.add_setting(new_setting)
         return DeclareSettingOutput(created=True, changed=[], incomplete={})
 
-    to_change = {'last_touch_time': datetime.utcnow()}
+    to_change: Dict[str, Union[str, datetime]] = {'last_touch_time': datetime.utcnow()}
     changed = []
     incomplete = {}
 
@@ -180,7 +180,7 @@ class GetSettingsOutputWithData(ORJSONModel):
     settings: List[GetSettingsOutputWithData_Setting] = Field(description="A list of all the setting, sorted by name")
 
 
-@router.get('', response_model=Union[GetSettingsOutputWithData, GetSettingsOutput])
+@router.get('', response_model=Union[GetSettingsOutputWithData, GetSettingsOutput])  # type: ignore
 async def get_settings(include_additional_data: bool = False, app: HeksherApp = application):
     """
     List all the settings in the service
