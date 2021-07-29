@@ -1,5 +1,7 @@
 # Heksher Changelog
-## Unreleased
+## 0.3.1
+### Removed
+* removed alembic upgrade from the image's pre-start
 ### Changed
 * Moved sentry initialization to the end of the app startup
 ### Internal  
