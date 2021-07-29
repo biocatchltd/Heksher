@@ -15,7 +15,6 @@ COPY pyproject.toml poetry.lock* ./
 RUN poetry install --no-dev --no-root -E alembic
 
 COPY . /usr/src/app/heksher
-COPY ./app /app
 
 RUN export APP_VERSION=$(poetry version | cut -d' ' -f2) && echo "__version__ = '$APP_VERSION'" > heksher/_version.py
 
