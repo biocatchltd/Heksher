@@ -380,7 +380,7 @@ testing = ["pytest", "pytest-benchmark"]
 name = "psycopg2"
 version = "2.9.1"
 description = "psycopg2 - Python-PostgreSQL Database Adapter"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 
@@ -725,12 +725,12 @@ docs = ["sphinx", "jaraco.packaging (>=8.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [extras]
-alembic = ["alembic", "psycopg2"]
+alembic = ["alembic"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = "~3.8"
-content-hash = "de48a3475d788cba530494fca44e9355dd535b8a5f4d966170b22370fb8fd15e"
+content-hash = "aa489412865c3a70776fff2e2ae1051b15b45ab24a552aa3a6c5a9c989178de3"
 
 [metadata.files]
 aiologstash = [

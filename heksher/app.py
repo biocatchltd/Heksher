@@ -76,7 +76,8 @@ class HeksherApp(FastAPI):
         try:
             async with self.engine.connect() as conn:
                 db_version = (await conn.execute(text('''SHOW SERVER_VERSION'''))).scalar_one_or_none()
-        except Exception:
+        except Exception as e:
+            print(e)
             db_version = None
 
         return bool(db_version)

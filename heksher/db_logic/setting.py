@@ -33,20 +33,11 @@ class SettingMixin(DBLogicBase):
         names_table = values(column('n', String), name='names').data(names)
         async with self.db_engine.connect() as conn:
             results = (await conn.execute(
-                names_table
-                .select()
-                .where(
-                    not_(
-                        settings.select()
-                        .where(settings.c.name == names_table.c.n)
-                        .exists()
-                    )
-                )
-            )
-                       ) \
-                .mappings().all()
+                names_table.select()
+                .where(not_(settings.select().where(settings.c.name == names_table.c.n).exists())))
+                       ).scalars().all()
 
-        return [row['n'] for row in results]
+        return results
 
     async def get_setting(self, name: str) -> Optional[Setting]:
         """
@@ -69,7 +60,7 @@ class SettingMixin(DBLogicBase):
                                   configurable.c.context_feature == context_features.c.name))
                 .where(configurable.c.setting == name)
                 .order_by(context_features.c.index))
-                                 ).mappings().all()
+                                 ).scalars().all()
 
         # we query both the rule and its configurable features at the same time. Meaning that if the rule does not
         # exist, we make 1 too many calls. However, we expect to make so few get_setting calls to non-existent rules
@@ -77,7 +68,6 @@ class SettingMixin(DBLogicBase):
         if data_row is None:
             return None
 
-        configurable_ = [row['context_feature'] for row in configurable_rows]
         type_ = setting_type(data_row['type'])
         metadata_ = orjson.loads(data_row['metadata'])
         default_value_ = orjson.loads(data_row['default_value'])
@@ -85,7 +75,7 @@ class SettingMixin(DBLogicBase):
             name,
             type_,
             default_value_,
-            configurable_,
+            configurable_rows,
             metadata_
         )
 

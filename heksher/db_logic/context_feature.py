@@ -54,8 +54,8 @@ class ContextFeatureMixin(DBLogicBase):
         async with self.db_engine.connect() as conn:
             rows = (await conn.execute(
                 select([context_features.c.name]).order_by(context_features.c.index),
-            )).mappings().all()
-        return [row['name'] for row in rows]
+            )).scalars().all()
+        return rows
 
     async def get_not_found_context_features(self, candidates: Iterable[str]) -> AbstractSet[str]:
         """

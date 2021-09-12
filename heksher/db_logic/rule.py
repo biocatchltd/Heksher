@@ -7,7 +7,6 @@ from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 import orjson
 from sqlalchemy import Integer, and_, cast, func, join, not_, select, tuple_
-from sqlalchemy.orm import aliased
 
 from heksher.db_logic.logic_base import DBLogicBase
 from heksher.db_logic.metadata import conditions, context_features, rules, settings
@@ -79,20 +78,26 @@ class RuleMixin(DBLogicBase):
 
         """
         condition_count = len(match_conditions)
-        condition_tuples = [(k, v) for (k, v) in match_conditions.items()]
+        condition_tuples = list(match_conditions.items())
 
         setting_rules = rules.select().where(rules.c.setting == setting)
 
         async with self.db_engine.connect() as conn:
+            #
             stmt = select(setting_rules.c.id.distinct()) \
                 .where(
+                # to make sure there is an exact-match to the given conditions,
+                # check the amount of conditions for the rule alongside testing there are no other conditions not
+                # specified by user
                 and_(
                     cast(select(func.count()).select_from(conditions)
-                         .where(conditions.c.rule == setting_rules.c.id), Integer) == condition_count,
+                         .where(conditions.c.rule == setting_rules.c.id), Integer)
+                    == condition_count,  # amount of conditions
                     not_(conditions.select()
-                         .where(and_(conditions.c.rule == setting_rules.c.id,
-                                     tuple_(conditions.c.context_feature, conditions.c.feature_value)
-                                     .not_in(condition_tuples)))
+                         .where(  # for better performance (speed wise), do the negative check
+                        and_(conditions.c.rule == setting_rules.c.id,
+                             tuple_(conditions.c.context_feature, conditions.c.feature_value)
+                             .not_in(condition_tuples)))
                          .exists())
                 )
             )
@@ -177,15 +182,14 @@ class RuleMixin(DBLogicBase):
                         settings.c.name.in_(setting_names)
                         & (settings.c.last_touch_time >= setting_touch_time_cutoff)
                     )
-                )).mappings().all()
-            applicable_settings = [row['name'] for row in settings_results]
+                )).scalars().all()
         else:
-            applicable_settings = setting_names
+            settings_results = setting_names
 
         applicable_rules: Dict[int, Tuple[Tuple[str, str], ...]] = {}
-        conditions_ = aliased(conditions)
+        conditions_ = conditions.alias()
 
-        if not applicable_settings:
+        if not settings_results:
             # shortcut in case all settings are up-to-date
             rule_results = []
         else:
@@ -214,13 +218,13 @@ class RuleMixin(DBLogicBase):
                 else:
                     inv_match = tuple_conditions if exact_tuple_conditions else cf_conditions
 
-            settings_container = [name for name in applicable_settings]
+            settings_container = [name for name in settings_results]
 
-            query = select() \
-                .add_columns(rules.c.id, conditions.c.context_feature, conditions.c.feature_value) \
-                .select_from(rules.outerjoin(conditions, rules.c.id == conditions.c.rule)) \
-                .outerjoin(context_features, context_features.c.name == conditions.c.context_feature) \
-                .where(
+            query = (select()
+                     .add_columns(rules.c.id, conditions.c.context_feature, conditions.c.feature_value)
+                     .select_from(rules.outerjoin(conditions, rules.c.id == conditions.c.rule))
+                     .outerjoin(context_features, context_features.c.name == conditions.c.context_feature)
+                     .where(
                 and_(rules.c.setting.in_(settings_container),
                      not_(conditions_.select()
                           .where(
@@ -229,8 +233,8 @@ class RuleMixin(DBLogicBase):
                          ))
                           .exists())
                      )
-            ) \
-                .order_by(rules.c.id, context_features.c.index)
+                    )
+                     .order_by(rules.c.id, context_features.c.index))
 
             async with self.db_engine.connect() as conn:
                 conditions_results = (await conn.execute(query)
@@ -257,7 +261,7 @@ class RuleMixin(DBLogicBase):
                 rule_results = (await conn.execute(rule_query)).mappings().all()
 
         ret = {}
-        missing_settings = set(applicable_settings)
+        missing_settings = set(settings_results)
         for setting, rows in groupby(rule_results, key=itemgetter('setting')):
             rule_list = [
                 InnerRuleSpec(

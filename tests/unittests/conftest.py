@@ -8,36 +8,46 @@ from heksher.db_logic import DBLogic
 from heksher.main import app
 
 
-class MockDatabaseConnector:
+class MockEngine:
     def __init__(self):
-        self.fetch_all = AsyncMock()
-        self.fetch_one = AsyncMock()
-        self.fetch_val = AsyncMock()
-        self.execute = AsyncMock()
-        self.execute_many = AsyncMock()
+        self.connection = DBConnectionMock()
 
-    async def connect(self):
-        pass
+    def connect(self):
+        return self.connection
 
-    async def disconnect(self):
+    def begin(self):
+        return self.connection
+
+    async def dispose(self):
         pass
 
     def __call__(self, *args, **kwargs):
         return self
 
 
+class DBConnectionMock:
+    def __init__(self):
+        self.execute = AsyncMock()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
 @fixture
-def mock_database():
-    ret = MockDatabaseConnector()
+def mock_engine():
+    ret = MockEngine()
     return ret
 
 
 @fixture
-def app_client(monkeypatch, mock_database):
+def app_client(monkeypatch, mock_engine):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', 'postgresql://dbuser:swordfish@pghost10/')
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', '["A","B","C"]')
 
-    monkeypatch.setattr(app_mod, 'create_async_engine', mock_database)
+    monkeypatch.setattr(app_mod, 'create_async_engine', mock_engine)
     monkeypatch.setattr(app_mod, 'DBLogic', lambda *a: AsyncMock(DBLogic))
 
     with TestClient(app) as app_client:
