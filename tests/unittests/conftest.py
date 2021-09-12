@@ -34,10 +34,10 @@ def mock_database():
 
 @fixture
 def app_client(monkeypatch, mock_database):
-    monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', 'dummy')
+    monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', 'postgresql://dbuser:swordfish@pghost10/')
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', '["A","B","C"]')
 
-    monkeypatch.setattr(app_mod, 'Database', mock_database)
+    monkeypatch.setattr(app_mod, 'create_async_engine', mock_database)
     monkeypatch.setattr(app_mod, 'DBLogic', lambda *a: AsyncMock(DBLogic))
 
     with TestClient(app) as app_client:

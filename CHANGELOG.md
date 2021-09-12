@@ -1,4 +1,8 @@
 # Heksher Changelog
+## Next
+### Changed
+* Heksher now uses sqlalchemy instead of databases
+* inline_sql method removed, uses sqlalchemy validation instead 
 ## 0.3.1
 ### Removed
 * removed alembic upgrade from the image's pre-start

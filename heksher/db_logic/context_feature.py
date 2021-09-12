@@ -20,7 +20,8 @@ class ContextFeatureMixin(DBLogicBase):
             raises a RuntimeError if the DB state cannot match the expected without deleting or reordering features.
         """
         query = select([context_features.c.name, context_features.c.index]).order_by(context_features.c.index)
-        records = await self.db.fetch_all(query)
+        async with self.db_engine.connect() as conn:
+            records = (await conn.execute(query)).mappings().all()
         expected = {cf: i for (i, cf) in enumerate(expected_context_features)}
         actual = {row['name']: row['index'] for row in records}
         super_sequence = supersequence_new_elements(expected_context_features, actual)
@@ -31,29 +32,29 @@ class ContextFeatureMixin(DBLogicBase):
         misplaced_keys = [k for k, v in actual.items() if expected[k] != v]
         if misplaced_keys:
             logger.warning('fixing indexing for context features', extra={'misplaced_keys': misplaced_keys})
-            query = """
-            UPDATE context_features
-            SET index = :v
-            WHERE name = :k
-            """
-            await self.db.execute_many(query, [{'k': k, 'v': expected[k]} for k in misplaced_keys])
+            async with self.db_engine.begin() as conn:
+                for k in misplaced_keys:
+                    stmt = context_features.update().where(context_features.c.name == k).values(index=expected[k])
+                    await conn.execute(stmt)
         if super_sequence:
             logger.info('adding new context features', extra={
                 'new_context_features': [element for (element, _) in super_sequence]
             })
-            await self.db.execute_many(
-                context_features.insert(),
-                [{'name': name, 'index': index} for (name, index) in super_sequence]
-            )
+            async with self.db_engine.begin() as conn:
+                await conn.execute(
+                    context_features.insert().values(
+                        [{'name': name, 'index': index} for (name, index) in super_sequence]
+                    ))
 
     async def get_context_features(self) -> Sequence[str]:
         """
         Returns:
             A sequence of all the context features currently in the DB
         """
-        rows = await self.db.fetch_all(
-            select([context_features.c.name]).order_by(context_features.c.index),
-        )
+        async with self.db_engine.connect() as conn:
+            rows = (await conn.execute(
+                select([context_features.c.name]).order_by(context_features.c.index),
+            )).mappings().all()
         return [row['name'] for row in rows]
 
     async def get_not_found_context_features(self, candidates: Iterable[str]) -> AbstractSet[str]:
@@ -77,6 +78,7 @@ class ContextFeatureMixin(DBLogicBase):
         Returns:
             Whether the string is a context feature name in the DB
         """
-        rows = await self.db.fetch_one(select([context_features.c.name])
-                                       .where(context_features.c.name == context_feature))
+        async with self.db_engine.connect() as conn:
+            rows = (await conn.execute(select([context_features.c.name])
+                                       .where(context_features.c.name == context_feature))).scalar_one_or_none()
         return rows is not None

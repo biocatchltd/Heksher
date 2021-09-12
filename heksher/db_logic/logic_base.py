@@ -1,8 +1,8 @@
-from databases import Database
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 
 class DBLogicBase:
     """
     A base class for DBLogic mixins
     """
-    db: Database
+    db_engine: AsyncEngine

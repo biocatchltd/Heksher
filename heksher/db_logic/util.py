@@ -50,23 +50,3 @@ def supersequence_new_elements(supersequence: Sequence[T], subsequence: Collecti
 
 
 INLINE_VALIDATION_PATTERN = re.compile(r'[a-zA-Z0-9_\s]+')
-
-
-def inline_sql(x: str) -> str:
-    """
-    Wrap a string, that is about to be inlined into an SQL query as a string literal, or raise an exception if it is
-    invalid
-    Args:
-        x: The string to be validated
-    Returns:
-        x wrapped in single quotes
-    Raises:
-        AssertionError if the string is invalid
-    Notes:
-        This function should be used as a means of assertion, api validation must be done before calling.
-        The validation of this method is especially stringent, since the string is inlined into a query. many safe SQL
-         strings will be rejected here.
-    """
-    if not INLINE_VALIDATION_PATTERN.fullmatch(x):
-        raise AssertionError(f'string {x!r} cannot be inlined')
-    return f"'{x}'"

@@ -2,19 +2,22 @@ import re
 from asyncio import wait_for
 from logging import INFO, getLogger
 
+import orjson
 import sentry_sdk
 from aiologstash import create_tcp_handler
-from databases import Database
 from envolved import EnvVar, Schema
 from envolved.parsers import CollectionParser
 from fastapi import FastAPI
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from heksher._version import __version__
 from heksher.db_logic import DBLogic
+from heksher.util import db_url_with_async_driver
 
 logger = getLogger(__name__)
 
-connection_string = EnvVar('HEKSHER_DB_CONNECTION_STRING', type=str)
+connection_string = EnvVar('HEKSHER_DB_CONNECTION_STRING', type=db_url_with_async_driver)
 startup_context_features = EnvVar('HEKSHER_STARTUP_CONTEXT_FEATURES', type=CollectionParser(';', str))
 
 
@@ -34,7 +37,7 @@ class HeksherApp(FastAPI):
     """
     The application class
     """
-    db: Database
+    engine: AsyncEngine
     db_logic: DBLogic
 
     async def startup(self):
@@ -49,9 +52,11 @@ class HeksherApp(FastAPI):
 
         db_connection_string = connection_string.get()
 
-        self.db = Database(db_connection_string)
-        await self.db.connect()
-        self.db_logic = DBLogic(self.db)
+        self.engine = create_async_engine(db_connection_string,
+                                          json_serializer=lambda obj: orjson.dumps(obj).decode(),
+                                          json_deserializer=orjson.loads
+                                          )
+        self.db_logic = DBLogic(self.engine)
 
         # assert that the db logic holds up
         expected_context_features = startup_context_features.get()
@@ -65,11 +70,12 @@ class HeksherApp(FastAPI):
                 logger.exception("cannot start sentry")
 
     async def shutdown(self):
-        await wait_for(self.db.disconnect(), timeout=10)
+        await wait_for(self.engine.dispose(), timeout=10)
 
     async def is_healthy(self):
         try:
-            db_version = await self.db.fetch_one("SHOW SERVER_VERSION;")
+            async with self.engine.connect() as conn:
+                db_version = (await conn.execute(text('''SHOW SERVER_VERSION'''))).scalar_one_or_none()
         except Exception:
             db_version = None
 
