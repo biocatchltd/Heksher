@@ -1,5 +1,5 @@
+from asyncio import sleep
 from logging import getLogger
-from time import sleep
 
 import aiologstash
 from aiologstash import create_tcp_handler
@@ -126,7 +126,7 @@ async def test_startup_logstash(monkeypatch, sql_service, purge_sql):
         monkeypatch.setattr(aiologstash, 'create_tcp_handler', mock_create_handler)
 
         async with TestClient(app):
-            sleep(0.1)  # wait for logstash records
+            await sleep(0.1)  # wait for logstash records
             # new context features were added, we should be seeing their logs now
             assert logstash.records
             for record in logstash.records:
