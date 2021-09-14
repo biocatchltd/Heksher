@@ -1,5 +1,16 @@
 from typing import AbstractSet, Any, Set, Tuple, Union
 
+from sqlalchemy.engine import URL, make_url
+
+
+def db_url_with_async_driver(url: str) -> str:
+    url_obj: URL = make_url(url)
+    full_driver_name = url_obj.drivername
+    if full_driver_name != 'postgresql':
+        raise ValueError('url must be to a postgresql db and must not include a driver')
+    url_obj = url_obj.set(drivername=full_driver_name + '+asyncpg')
+    return url_obj.render_as_string(hide_password=False)
+
 
 class JsonPrimitiveSet(AbstractSet[Union[str, bool, float, int]]):
     """

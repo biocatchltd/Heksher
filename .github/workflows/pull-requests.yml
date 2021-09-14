@@ -32,3 +32,5 @@ jobs:
       run: poetry run sh scripts/unittest.sh
     - name: Run blackbox tests
       run: poetry run sh scripts/blackbox_test.sh
+    - name: Run image test
+      run: poetry run sh scripts/image_test.sh

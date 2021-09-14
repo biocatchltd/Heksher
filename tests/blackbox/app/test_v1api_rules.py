@@ -6,8 +6,8 @@ from pytest import fixture, mark
 
 
 @fixture
-def example_rule(size_limit_setting, app_client):
-    res = app_client.post('/api/v1/rules', data=json.dumps({
+async def example_rule(size_limit_setting, app_client):
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
         'setting': 'size_limit',
         'feature_values': {'theme': 'bright'},
         'value': 10,
@@ -21,8 +21,9 @@ def example_rule(size_limit_setting, app_client):
     return rule_id
 
 
-def test_add_rule(example_rule, app_client):
-    res = app_client.get(f'/api/v1/rules/{example_rule}')
+@mark.asyncio
+async def test_add_rule(example_rule, app_client):
+    res = await app_client.get(f'/api/v1/rules/{example_rule}')
     res.raise_for_status()
     assert res.json() == {
         'setting': 'size_limit',
@@ -32,8 +33,9 @@ def test_add_rule(example_rule, app_client):
     }
 
 
-def test_add_rule_no_conds(size_limit_setting, app_client):
-    res = app_client.post('/api/v1/rules', data=json.dumps({
+@mark.asyncio
+async def test_add_rule_no_conds(size_limit_setting, app_client):
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
         'setting': 'size_limit',
         'feature_values': {},
         'value': 10,
@@ -42,8 +44,9 @@ def test_add_rule_no_conds(size_limit_setting, app_client):
     assert res.status_code == 422
 
 
-def test_add_rule_missing_setting(app_client):
-    res = app_client.post('/api/v1/rules', data=json.dumps({
+@mark.asyncio
+async def test_add_rule_missing_setting(app_client):
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
         'setting': 'size_limit_2',
         'feature_values': {'theme': 'bright'},
         'value': 10,
@@ -52,8 +55,9 @@ def test_add_rule_missing_setting(app_client):
     assert 400 <= res.status_code <= 499
 
 
-def test_add_rule_non_configurable(size_limit_setting, app_client):
-    res = app_client.post('/api/v1/rules', data=json.dumps({
+@mark.asyncio
+async def test_add_rule_non_configurable(size_limit_setting, app_client):
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
         'setting': 'size_limit',
         'feature_values': {'trust': 'full'},
         'value': 10,
@@ -62,8 +66,9 @@ def test_add_rule_non_configurable(size_limit_setting, app_client):
     assert 400 <= res.status_code <= 499
 
 
-def test_add_rule_bad_type(size_limit_setting, app_client):
-    res = app_client.post('/api/v1/rules', data=json.dumps({
+@mark.asyncio
+async def test_add_rule_bad_type(size_limit_setting, app_client):
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
         'setting': 'size_limit',
         'feature_values': {'theme': 'bright'},
         'value': True,
@@ -72,8 +77,9 @@ def test_add_rule_bad_type(size_limit_setting, app_client):
     assert 400 <= res.status_code <= 499
 
 
-def test_add_rule_existing(example_rule, app_client):
-    res = app_client.post('/api/v1/rules', data=json.dumps({
+@mark.asyncio
+async def test_add_rule_existing(example_rule, app_client):
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
         'setting': 'size_limit',
         'feature_values': {'theme': 'bright'},
         'value': 10,
@@ -82,8 +88,9 @@ def test_add_rule_existing(example_rule, app_client):
     assert res.status_code == 409
 
 
-def test_block_injection(example_rule, app_client):
-    res = app_client.post('/api/v1/rules', data=json.dumps({
+@mark.asyncio
+async def test_block_injection(example_rule, app_client):
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
         'setting': 'size_limit',
         'feature_values': {'theme': "' OR 1='1"},
         'value': 10,
@@ -92,26 +99,30 @@ def test_block_injection(example_rule, app_client):
     assert res.status_code == 422
 
 
-def test_delete_rule(example_rule, app_client):
-    res = app_client.delete(f'/api/v1/rules/{example_rule}')
+@mark.asyncio
+async def test_delete_rule(example_rule, app_client):
+    res = await app_client.delete(f'/api/v1/rules/{example_rule}')
     res.raise_for_status()
     assert not res.content
-    res = app_client.get(f'/api/v1/rules/{example_rule}')
+    res = await app_client.get(f'/api/v1/rules/{example_rule}')
     assert res.status_code == 404
 
 
-def test_delete_rule_missing(example_rule, app_client):
-    res = app_client.delete(f'/api/v1/rules/{example_rule + 1}')
+@mark.asyncio
+async def test_delete_rule_missing(example_rule, app_client):
+    res = await app_client.delete(f'/api/v1/rules/{example_rule + 1}')
     assert res.status_code == 404
 
 
-def test_get_rule_missing(example_rule, app_client):
-    res = app_client.get(f'/api/v1/rules/{example_rule + 1}')
+@mark.asyncio
+async def test_get_rule_missing(example_rule, app_client):
+    res = await app_client.get(f'/api/v1/rules/{example_rule + 1}')
     assert res.status_code == 404
 
 
-def test_search_rule(example_rule, app_client, sql_service):
-    res = app_client.post('/api/v1/rules/search', data=json.dumps({
+@mark.asyncio
+async def test_search_rule(example_rule, app_client, sql_service):
+    res = await app_client.post('/api/v1/rules/search', data=json.dumps({
         'setting': 'size_limit',
         'feature_values': [('theme', 'bright')]
     }))
@@ -121,16 +132,18 @@ def test_search_rule(example_rule, app_client, sql_service):
     }
 
 
-def test_search_rule_empty(example_rule, app_client, sql_service):
-    res = app_client.get('/api/v1/rules/search', data=json.dumps({
+@mark.asyncio
+async def test_search_rule_empty(example_rule, app_client, sql_service):
+    res = await app_client.get('/api/v1/rules/search', data=json.dumps({
         'setting': 'size_limit',
         'feature_values': []
     }))
     assert res.status_code == 422
 
 
-def test_search_rule_missing(example_rule, app_client):
-    res = app_client.post('/api/v1/rules/search', data=json.dumps({
+@mark.asyncio
+async def test_search_rule_missing(example_rule, app_client):
+    res = await app_client.post('/api/v1/rules/search', data=json.dumps({
         'setting': 'size_limit',
         'feature_values': [('theme', 'dark')]
     }))
@@ -139,8 +152,8 @@ def test_search_rule_missing(example_rule, app_client):
 
 @fixture
 def mk_setting(app_client):
-    def mk_setting(name: str):
-        res = app_client.put('api/v1/settings/declare', data=json.dumps({
+    async def mk_setting(name: str):
+        res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
             'name': name,
             'configurable_features': ['theme', 'trust', 'user'],
             'type': 'int'
@@ -157,8 +170,8 @@ def mk_setting(app_client):
 
 @fixture
 def mk_rule(app_client):
-    def mk_rule(setting_name, features, val):
-        res = app_client.post('/api/v1/rules', data=json.dumps({
+    async def mk_rule(setting_name, features, val):
+        res = await app_client.post('/api/v1/rules', data=json.dumps({
             'setting': setting_name,
             'feature_values': features,
             'value': val,
@@ -171,23 +184,24 @@ def mk_rule(app_client):
 
 
 @fixture
-def setup_rules(mk_setting, mk_rule):
-    mk_setting('a')
-    mk_setting('b')
-    mk_setting('c')
+async def setup_rules(mk_setting, mk_rule):
+    await mk_setting('a')
+    await mk_setting('b')
+    await mk_setting('c')
 
-    mk_rule('a', {'trust': 'full'}, 1)
-    mk_rule('a', {'theme': 'black'}, 2)
-    mk_rule('a', {'theme': 'black', 'trust': 'full'}, 3)
-    mk_rule('b', {'trust': 'none'}, 4)
-    mk_rule('b', {'trust': 'part'}, 5)
-    mk_rule('c', {'trust': 'full'}, 6)
-    mk_rule('a', {'theme': 'black', 'user': 'admin'}, 7)
+    await mk_rule('a', {'trust': 'full'}, 1)
+    await mk_rule('a', {'theme': 'black'}, 2)
+    await mk_rule('a', {'theme': 'black', 'trust': 'full'}, 3)
+    await mk_rule('b', {'trust': 'none'}, 4)
+    await mk_rule('b', {'trust': 'part'}, 5)
+    await mk_rule('c', {'trust': 'full'}, 6)
+    await mk_rule('a', {'theme': 'black', 'user': 'admin'}, 7)
 
 
+@mark.asyncio
 @mark.parametrize('metadata', [False, True])
-def test_query_rules(metadata: bool, app_client, setup_rules):
-    res = app_client.post('/api/v1/rules/query', data=json.dumps({
+async def test_query_rules(metadata: bool, app_client, setup_rules):
+    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata
@@ -212,13 +226,14 @@ def test_query_rules(metadata: bool, app_client, setup_rules):
     assert res.json() == expected
 
 
+@mark.asyncio
 @mark.parametrize('metadata', [False, True])
-def test_query_rules_time_cache(metadata: bool, app_client, setup_rules, mk_rule):
+async def test_query_rules_time_cache(metadata: bool, app_client, setup_rules, mk_rule):
     current_time = datetime.utcnow()
     # touch a to change its last_touch_time
-    mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
+    await mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
 
-    res = app_client.post('/api/v1/rules/query', data=json.dumps({
+    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata,
@@ -241,14 +256,15 @@ def test_query_rules_time_cache(metadata: bool, app_client, setup_rules, mk_rule
     assert res.json() == expected
 
 
+@mark.asyncio
 @mark.parametrize('metadata', [False, True])
 @mark.parametrize('suffix', ['Z', '+00:00', '+01:02', '-06:05'])
-def test_query_rules_bad_cache_time_zone(metadata: bool, suffix: str, app_client, setup_rules, mk_rule):
+async def test_query_rules_bad_cache_time_zone(metadata: bool, suffix: str, app_client, setup_rules, mk_rule):
     current_time = datetime.utcnow()
     # touch a to change its last_touch_time
-    mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
+    await mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
 
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata,
@@ -257,11 +273,12 @@ def test_query_rules_bad_cache_time_zone(metadata: bool, suffix: str, app_client
     assert res.status_code == 422
 
 
+@mark.asyncio
 @mark.parametrize('metadata', [False, True])
-def test_query_rules_fully_cached(metadata: bool, app_client, setup_rules, mk_rule):
+async def test_query_rules_fully_cached(metadata: bool, app_client, setup_rules, mk_rule):
     current_time = datetime.utcnow()
 
-    res = app_client.post('/api/v1/rules/query', data=json.dumps({
+    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata,
@@ -275,14 +292,15 @@ def test_query_rules_fully_cached(metadata: bool, app_client, setup_rules, mk_ru
     assert res.json() == expected
 
 
+@mark.asyncio
 @mark.parametrize('metadata', [False, True])
-def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, sql_service):
+async def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, sql_service):
     with sql_service.connection() as connection:
         connection.execute("""
         INSERT INTO rules (setting, value, metadata) VALUES ('b', '10', '{"test": "yes"}')
         """)
 
-    res = app_client.post('/api/v1/rules/query', data=json.dumps({
+    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata
@@ -308,9 +326,10 @@ def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, sql_ser
     assert res.json() == expected
 
 
+@mark.asyncio
 @mark.parametrize('metadata', [False, True])
-def test_query_rules_nooptions(metadata: bool, app_client, setup_rules):
-    res = app_client.post('/api/v1/rules/query', data=json.dumps({
+async def test_query_rules_nooptions(metadata: bool, app_client, setup_rules):
+    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a'],
         'context_features_options': {},
         'include_metadata': metadata
@@ -325,14 +344,15 @@ def test_query_rules_nooptions(metadata: bool, app_client, setup_rules):
     assert res.json() == expected
 
 
+@mark.asyncio
 @mark.parametrize('metadata', [False, True])
-def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, setup_rules, sql_service):
+async def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, setup_rules, sql_service):
     with sql_service.connection() as connection:
         connection.execute("""
         INSERT INTO rules (setting, value, metadata) VALUES ('b', '10', '{"test": "yes"}')
         """)
 
-    res = app_client.post('/api/v1/rules/query', data=json.dumps({
+    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {},
         'include_metadata': metadata
@@ -354,9 +374,10 @@ def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, setup_r
     assert res.json() == expected
 
 
+@mark.asyncio
 @mark.parametrize('metadata', [False, True])
-def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
-    res = app_client.post('/api/v1/rules/query', data=json.dumps({
+async def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
+    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': '*',
         'include_metadata': metadata
@@ -383,9 +404,10 @@ def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
     assert res.json() == expected
 
 
+@mark.asyncio
 @mark.parametrize('metadata', [False, True])
-def test_query_rules_wildcard_some(metadata: bool, app_client, setup_rules):
-    res = app_client.post('/api/v1/rules/query', data=json.dumps({
+async def test_query_rules_wildcard_some(metadata: bool, app_client, setup_rules):
+    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'theme': '*', 'trust': ['full', 'none']},
         'include_metadata': metadata
@@ -410,9 +432,10 @@ def test_query_rules_wildcard_some(metadata: bool, app_client, setup_rules):
     assert res.json() == expected
 
 
+@mark.asyncio
 @mark.parametrize('metadata', [False, True])
-def test_query_rules_wildcard_only(metadata: bool, app_client, setup_rules):
-    res = app_client.post('/api/v1/rules/query', data=json.dumps({
+async def test_query_rules_wildcard_only(metadata: bool, app_client, setup_rules):
+    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'theme': '*'},
         'include_metadata': metadata
@@ -433,51 +456,57 @@ def test_query_rules_wildcard_only(metadata: bool, app_client, setup_rules):
     assert res.json() == expected
 
 
-def test_query_rules_bad_contexts(app_client, setup_rules):
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+@mark.asyncio
+async def test_query_rules_bad_contexts(app_client, setup_rules):
+    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black'], 'love': ['overflowing']},
     }))
     assert 400 <= res.status_code <= 499
 
 
-def test_query_rules_empty_contexts(app_client, setup_rules):
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+@mark.asyncio
+async def test_query_rules_empty_contexts(app_client, setup_rules):
+    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': []}
     }))
     assert 400 <= res.status_code <= 499
 
 
-def test_query_rules_bad_settings(app_client, setup_rules):
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+@mark.asyncio
+async def test_query_rules_bad_settings(app_client, setup_rules):
+    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'd'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
     }))
     assert 400 <= res.status_code <= 499
 
 
+@mark.asyncio
 @mark.parametrize('options', [None, '**', 'wildcard'])
-def test_query_rules_bad_options(app_client, setup_rules, options):
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+async def test_query_rules_bad_options(app_client, setup_rules, options):
+    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a'],
         'context_features_options': options,
     }))
     assert res.status_code == 422, res.content
 
 
+@mark.asyncio
 @mark.parametrize('options', [None, '**', 'wildcard'])
-def test_query_rules_bad_inner_option(app_client, setup_rules, options):
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+async def test_query_rules_bad_inner_option(app_client, setup_rules, options):
+    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a'],
         'context_features_options': {'trust': options},
     }))
     assert res.status_code == 422, res.content
 
 
+@mark.asyncio
 @mark.parametrize('metadata', [False, True])
-def test_query_rules_nosettings(metadata: bool, app_client, setup_rules):
-    res = app_client.post('/api/v1/rules/query', data=json.dumps({
+async def test_query_rules_nosettings(metadata: bool, app_client, setup_rules):
+    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
         'setting_names': [],
         'context_features_options': '*',
         'include_metadata': metadata
@@ -488,13 +517,14 @@ def test_query_rules_nosettings(metadata: bool, app_client, setup_rules):
     assert res.json() == expected
 
 
+@mark.asyncio
 @mark.parametrize('metadata', [False, True])
-def test_query_rules_bad_cache_future(metadata: bool, app_client, setup_rules, mk_rule):
+async def test_query_rules_bad_cache_future(metadata: bool, app_client, setup_rules, mk_rule):
     future_time = datetime.utcnow() + timedelta(hours=2)
     # touch a to change its last_touch_time
-    mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
+    await mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
 
-    res = app_client.get('/api/v1/rules/query', data=json.dumps({
+    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
         'setting_names': ['a', 'b'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata,
@@ -503,13 +533,14 @@ def test_query_rules_bad_cache_future(metadata: bool, app_client, setup_rules, m
     assert res.status_code == 422
 
 
-def test_patch_rule_sanity(example_rule, app_client):
-    res = app_client.patch(f'/api/v1/rules/{example_rule}', data=json.dumps(
+@mark.asyncio
+async def test_patch_rule_sanity(example_rule, app_client):
+    res = await app_client.patch(f'/api/v1/rules/{example_rule}', data=json.dumps(
         {"value": 5}
     ))
     assert res.status_code == 204
     assert not res.content
-    res = app_client.get(f'/api/v1/rules/{example_rule}')
+    res = await app_client.get(f'/api/v1/rules/{example_rule}')
     res.raise_for_status()
     assert res.json() == {
         'setting': 'size_limit',
@@ -519,15 +550,17 @@ def test_patch_rule_sanity(example_rule, app_client):
     }
 
 
-def test_patch_rule_missing(app_client):
-    res = app_client.patch('/api/v1/rules/50000', data=json.dumps(
+@mark.asyncio
+async def test_patch_rule_missing(app_client):
+    res = await app_client.patch('/api/v1/rules/50000', data=json.dumps(
         {"value": 5}
     ))
     assert res.status_code == 404
 
 
-def test_patch_rule_bad_data(example_rule, app_client):
-    res = app_client.patch(f'/api/v1/rules/{example_rule}', data=json.dumps(
+@mark.asyncio
+async def test_patch_rule_bad_data(example_rule, app_client):
+    res = await app_client.patch(f'/api/v1/rules/{example_rule}', data=json.dumps(
         {"value": ["d5"]}
     ))
     assert res.status_code == 400

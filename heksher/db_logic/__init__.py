@@ -1,4 +1,4 @@
-from databases import Database
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from heksher.db_logic.context_feature import ContextFeatureMixin
 from heksher.db_logic.rule import RuleMixin
@@ -10,5 +10,5 @@ class DBLogic(ContextFeatureMixin, SettingMixin, RuleMixin):
     Class to handle all logic for interacting with the DB
     """
     # note that all methods are implemented inside mixin classes
-    def __init__(self, db: Database):
-        self.db = db
+    def __init__(self, engine: AsyncEngine):
+        self.db_engine = engine

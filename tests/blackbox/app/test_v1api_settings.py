@@ -3,8 +3,9 @@ import json
 from pytest import mark
 
 
-def test_declare_new_setting(size_limit_setting, app_client):
-    res = app_client.get('api/v1/settings/size_limit')
+@mark.asyncio
+async def test_declare_new_setting(size_limit_setting, app_client):
+    res = await app_client.get('/api/v1/settings/size_limit')
     res.raise_for_status()
     assert res.json() == {
         'name': 'size_limit',
@@ -15,9 +16,10 @@ def test_declare_new_setting(size_limit_setting, app_client):
     }
 
 
+@mark.asyncio
 @mark.parametrize('type_', [15, 'Flags{1,2,3}', 'enum[1,2,3]', 'Flags[[0]]', 'Flags[]'])
-def test_declare_new_setting_bad_type(app_client, type_):
-    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+async def test_declare_new_setting_bad_type(app_client, type_):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': type_,
@@ -27,8 +29,9 @@ def test_declare_new_setting_bad_type(app_client, type_):
     assert res.status_code == 422
 
 
-def test_declare_new_setting_bad_default(app_client):
-    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+@mark.asyncio
+async def test_declare_new_setting_bad_default(app_client):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
@@ -38,8 +41,9 @@ def test_declare_new_setting_bad_default(app_client):
     assert res.status_code == 422
 
 
-def test_declare_new_setting_bad_cf(app_client):
-    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+@mark.asyncio
+async def test_declare_new_setting_bad_cf(app_client):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme', 'color'],
         'type': 'int',
@@ -49,8 +53,9 @@ def test_declare_new_setting_bad_cf(app_client):
     assert res.status_code == 422
 
 
-def test_declare_new_setting_modify_bad_cf(size_limit_setting, app_client):
-    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+@mark.asyncio
+async def test_declare_new_setting_modify_bad_cf(size_limit_setting, app_client):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme', 'color'],
         'type': 'int',
@@ -60,8 +65,9 @@ def test_declare_new_setting_modify_bad_cf(size_limit_setting, app_client):
     assert res.status_code == 422
 
 
-def test_declare_no_modify(size_limit_setting, app_client):
-    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+@mark.asyncio
+async def test_declare_no_modify(size_limit_setting, app_client):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
@@ -76,8 +82,9 @@ def test_declare_no_modify(size_limit_setting, app_client):
     }
 
 
-def test_declare_modify(app_client):
-    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+@mark.asyncio
+async def test_declare_modify(app_client):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user'],
         'type': 'int',
@@ -91,7 +98,7 @@ def test_declare_modify(app_client):
         'incomplete': {}
     }
 
-    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
@@ -110,7 +117,7 @@ def test_declare_modify(app_client):
         'incomplete': {}
     }
 
-    res = app_client.get('api/v1/settings/size_limit')
+    res = await app_client.get('/api/v1/settings/size_limit')
     res.raise_for_status()
     assert res.json() == {
         'name': 'size_limit',
@@ -121,8 +128,9 @@ def test_declare_modify(app_client):
     }
 
 
-def test_declare_conflict(size_limit_setting, app_client):
-    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+@mark.asyncio
+async def test_declare_conflict(size_limit_setting, app_client):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': 'str',
@@ -132,7 +140,8 @@ def test_declare_conflict(size_limit_setting, app_client):
     assert res.status_code == 409
 
 
-def test_declare_type_upgrade(size_limit_setting, app_client):
+@mark.asyncio
+async def test_declare_type_upgrade(size_limit_setting, app_client):
     upgraded_type = 'float'
     updated_setting = {
         'name': 'size_limit',
@@ -142,17 +151,18 @@ def test_declare_type_upgrade(size_limit_setting, app_client):
         'metadata': {'testing': True}
     }
 
-    res = app_client.put('api/v1/settings/declare', data=json.dumps(updated_setting))
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps(updated_setting))
     res.raise_for_status()
     assert res.json() == {'changed': ['type'], 'created': False, 'incomplete': {}}
 
-    res = app_client.get('api/v1/settings/size_limit')
+    res = await app_client.get('/api/v1/settings/size_limit')
     res.raise_for_status()
     assert res.json() == updated_setting
 
 
-def test_declare_incomplete(size_limit_setting, app_client):
-    res = app_client.put('api/v1/settings/declare', data=json.dumps({
+@mark.asyncio
+async def test_declare_incomplete(size_limit_setting, app_client):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user'],
         'type': 'int',
@@ -168,7 +178,7 @@ def test_declare_incomplete(size_limit_setting, app_client):
         }
     }
 
-    res = app_client.get('api/v1/settings/size_limit')
+    res = await app_client.get('/api/v1/settings/size_limit')
     res.raise_for_status()
     assert res.json() == {
         'name': 'size_limit',
@@ -179,8 +189,9 @@ def test_declare_incomplete(size_limit_setting, app_client):
     }
 
 
-def test_get_setting(size_limit_setting, app_client):
-    res = app_client.get('api/v1/settings/size_limit')
+@mark.asyncio
+async def test_get_setting(size_limit_setting, app_client):
+    res = await app_client.get('/api/v1/settings/size_limit')
     res.raise_for_status()
     assert res.json() == {
         'name': 'size_limit',
@@ -191,28 +202,32 @@ def test_get_setting(size_limit_setting, app_client):
     }
 
 
-def test_get_setting_missing(app_client):
-    res = app_client.get('api/v1/settings/size_limit')
+@mark.asyncio
+async def test_get_setting_missing(app_client):
+    res = await app_client.get('/api/v1/settings/size_limit')
     assert res.status_code == 404
 
 
-def test_delete_setting(size_limit_setting, app_client):
-    res = app_client.delete('api/v1/settings/size_limit')
+@mark.asyncio
+async def test_delete_setting(size_limit_setting, app_client):
+    res = await app_client.delete('/api/v1/settings/size_limit')
     assert res.status_code == 204
     assert not res.content
-    res = app_client.get('api/v1/settings/size_limit')
+    res = await app_client.get('/api/v1/settings/size_limit')
     assert res.status_code == 404
 
 
-def test_delete_setting_missing(size_limit_setting, app_client):
-    res = app_client.delete('api/v1/settings/size_limit2')
+@mark.asyncio
+async def test_delete_setting_missing(size_limit_setting, app_client):
+    res = await app_client.delete('/api/v1/settings/size_limit2')
     assert res.status_code == 404
 
 
+@mark.asyncio
 @mark.parametrize('additional_data', [False, None])
-def test_get_settings(app_client, additional_data):
-    def mk_setting(name: str):
-        res = app_client.put('api/v1/settings/declare', data=json.dumps({
+async def test_get_settings(app_client, additional_data):
+    async def mk_setting(name: str):
+        res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
             'name': name,
             'configurable_features': [],
             'type': 'int'
@@ -224,15 +239,15 @@ def test_get_settings(app_client, additional_data):
             'incomplete': {}
         }
 
-    mk_setting('a')
-    mk_setting('c')
-    mk_setting('b')
+    await mk_setting('a')
+    await mk_setting('c')
+    await mk_setting('b')
 
     request_data = {}
     if additional_data is not None:
         request_data['include_additional_data'] = additional_data
 
-    res = app_client.get('api/v1/settings', data=json.dumps(request_data))
+    res = await app_client.get('/api/v1/settings', data=json.dumps(request_data))
     res.raise_for_status()
     assert res.json() == {
         'settings': [
@@ -243,9 +258,10 @@ def test_get_settings(app_client, additional_data):
     }
 
 
-def test_get_settings_additional_data(app_client):
-    def mk_setting(name: str, type: str):
-        res = app_client.put('api/v1/settings/declare', data=json.dumps({
+@mark.asyncio
+async def test_get_settings_additional_data(app_client):
+    async def mk_setting(name: str, type: str):
+        res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
             'name': name,
             'configurable_features': ['theme', 'user'],
             'type': type
@@ -257,11 +273,11 @@ def test_get_settings_additional_data(app_client):
             'incomplete': {}
         }
 
-    mk_setting('a', 'int')
-    mk_setting('c', 'float')
-    mk_setting('b', 'str')
+    await mk_setting('a', 'int')
+    await mk_setting('c', 'float')
+    await mk_setting('b', 'str')
 
-    res = app_client.get('api/v1/settings', params={
+    res = await app_client.get('/api/v1/settings', query_string={
         'include_additional_data': True
     })
     res.raise_for_status()
