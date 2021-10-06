@@ -255,7 +255,7 @@ class GetRuleOutput(ORJSONModel):
 
 @router.get('/{rule_id}', response_model=GetRuleOutput)
 async def get_rule(rule_id: int, app: HeksherApp = application):
-    rule_spec = await app.db_logic.get_rule(rule_id)
+    rule_spec = await app.db_logic.get_rule(rule_id, include_metadata=True)
 
     if not rule_spec:
         return PlainTextResponse('rule with id not found', status_code=status.HTTP_404_NOT_FOUND)

@@ -9,7 +9,7 @@ import orjson
 from sqlalchemy import Integer, and_, cast, func, join, not_, select, tuple_
 
 from heksher.db_logic.logic_base import DBLogicBase
-from heksher.db_logic.metadata import conditions, context_features, rules, settings
+from heksher.db_logic.metadata import conditions, context_features, rules, settings, rule_metadata
 
 
 class RuleSpec(NamedTuple):
@@ -30,18 +30,22 @@ class InnerRuleSpec(NamedTuple):
 
 
 class RuleMixin(DBLogicBase):
-    async def get_rule(self, id_: int) -> Optional[RuleSpec]:
+    async def get_rule(self, id_: int, include_metadata: bool) -> Optional[RuleSpec]:
         """
         Args:
             id_: the id of a specific rule
+            include_metadata: whether to include rule metadata
 
         Returns:
             A RuleSpec describing the rule with the id, or None if no such rule exists.
         """
         async with self.db_engine.connect() as conn:
             basic_results = (await conn.execute(
-                select([rules.c.setting, rules.c.value, rules.c.metadata]).where(rules.c.id == id_).limit(1)
+                select([rules.c.setting, rules.c.value]).where(rules.c.id == id_).limit(1)
             )).mappings().first()
+            if not basic_results:
+                # rule does not exist
+                return None
             feature_values = (await conn.execute(
                 select([conditions.c.context_feature, conditions.c.feature_value])
                 .select_from(join(conditions, context_features,
@@ -50,13 +54,14 @@ class RuleMixin(DBLogicBase):
                 .order_by(context_features.c.index)
                 .limit(1))
                               ).mappings().all()
+            if include_metadata:
+                metadata_ = dict((await conn.execute(
+                    select([rule_metadata.c.key, rule_metadata.c.value])
+                    .where(rule_metadata.c.rule == id_)
+                )).all())
+            else:
+                metadata_ = None
 
-        # we query both the rule and its feature values at the same time. Meaning that if the rule does not exist,
-        # we make 1 too many calls. However, we expect to make so few get_rule calls to non-existent rules that this
-        # is negligible
-        if not basic_results:
-            return None
-        metadata_ = orjson.loads(basic_results['metadata'])
         value_ = orjson.loads(basic_results['value'])
         return RuleSpec(
             basic_results['setting'],
@@ -129,12 +134,11 @@ class RuleMixin(DBLogicBase):
         Notes:
             The caller must ensure that the rule does not exist prior
         """
-        metadata_ = str(orjson.dumps(metadata), 'utf-8')
         value_ = str(orjson.dumps(value), 'utf-8')
         async with self.db_engine.begin() as conn:
             rule_id = (await conn.execute(
                 rules.insert()
-                .values(setting=setting, value=value_, metadata=metadata_)
+                .values(setting=setting, value=value_)
                 .returning(rules.c.id)
             )).scalar_one()
             await conn.execute(
@@ -142,6 +146,12 @@ class RuleMixin(DBLogicBase):
                     [{'rule': rule_id, 'context_feature': k, 'feature_value': v}
                      for (k, v) in match_conditions.items()])
             )
+            if metadata:
+                await conn.execute(
+                    rule_metadata.insert().values(
+                        [{'rule': rule_id, 'key': k, 'value': v} for (k, v) in metadata.items()]
+                    )
+                )
         return rule_id
 
     async def patch_rule(self, rule_id: int, value: Any) -> None:
@@ -179,8 +189,8 @@ class RuleMixin(DBLogicBase):
                 settings_results = (await conn.execute(
                     select([settings.c.name])
                     .where(
-                        settings.c.name.in_(setting_names)
-                        & (settings.c.last_touch_time >= setting_touch_time_cutoff)
+                    settings.c.name.in_(setting_names)
+                    & (settings.c.last_touch_time >= setting_touch_time_cutoff)
                     )
                 )).scalars().all()
         else:
@@ -255,10 +265,19 @@ class RuleMixin(DBLogicBase):
                 .where(rules.c.id.in_(applicable_rules))
                 .order_by(rules.c.setting)
             )
-            if include_metadata:
-                rule_query.append_column(rules.c.metadata)
             async with self.db_engine.connect() as conn:
                 rule_results = (await conn.execute(rule_query)).mappings().all()
+
+            if include_metadata:
+                metadata_results = (await conn.execute(
+                    select([rule_metadata.c.rule, rule_metadata.c.key, rule_metadata.c.value])
+                    .where(rules.c.id.in_(applicable_rules))
+                    .order_by(rule_metadata.c.rule)
+                )).all()
+                metadata = {
+                    rule_id: {k: v for (_, k, v) in rows}
+                    for (rule_id, rows) in groupby(metadata_results, key=itemgetter(0))
+                }
 
         ret = {}
         missing_settings = set(settings_results)
@@ -267,7 +286,7 @@ class RuleMixin(DBLogicBase):
                 InnerRuleSpec(
                     orjson.loads(row['value']),
                     applicable_rules[row['id']],
-                    orjson.loads(row['metadata']) if include_metadata else None,
+                    metadata if include_metadata else None,
                     row['id']
                 )
                 for row in rows

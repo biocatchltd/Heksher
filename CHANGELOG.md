@@ -1,8 +1,14 @@
 # Heksher Changelog
-## Next
+## Next (REQ alembic upgrade)
+### Added
+* Setting names can now include the `.` character
+* Added schema information for setting types
 ### Changed
 * Heksher now uses sqlalchemy instead of databases
-* inline_sql method removed, uses sqlalchemy validation instead 
+* inline_sql method removed, uses sqlalchemy validation instead
+* metadata is now stored in seperate tables
+### Fixed
+* removed yellowbox as a non-dev dependency
 ## 0.3.1
 ### Removed
 * removed alembic upgrade from the image's pre-start

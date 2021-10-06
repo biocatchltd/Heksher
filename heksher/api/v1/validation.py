@@ -9,4 +9,4 @@ if TYPE_CHECKING:
 else:
     ContextFeatureName = constr(regex='[a-zA-Z_0-9]+$')
     ContextFeatureValue = constr(regex='[a-zA-Z_0-9]+$')
-    SettingName = constr(regex='[a-zA-Z_0-9]+$')
+    SettingName = constr(regex='[a-zA-Z_0-9.]+$')
