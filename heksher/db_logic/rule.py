@@ -85,7 +85,7 @@ class RuleMixin(DBLogicBase):
         condition_count = len(match_conditions)
         condition_tuples = list(match_conditions.items())
 
-        setting_rules = rules.select().where(rules.c.setting == setting)
+        setting_rules = rules.select().where(rules.c.setting == setting).subquery()
 
         async with self.db_engine.connect() as conn:
             #
@@ -95,8 +95,8 @@ class RuleMixin(DBLogicBase):
                 # check the amount of conditions for the rule alongside testing there are no other conditions not
                 # specified by user
                 and_(
-                    cast(select(func.count()).select_from(conditions)
-                         .where(conditions.c.rule == setting_rules.c.id), Integer)
+                    select(func.count()).select_from(conditions)
+                    .where(conditions.c.rule == setting_rules.c.id).scalar_subquery()
                     == condition_count,  # amount of conditions
                     not_(conditions.select()
                          .where(  # for better performance (speed wise), do the negative check
@@ -268,18 +268,18 @@ class RuleMixin(DBLogicBase):
             async with self.db_engine.connect() as conn:
                 rule_results = (await conn.execute(rule_query)).mappings().all()
 
-            if include_metadata:
-                metadata_results = (await conn.execute(
-                    select([rule_metadata.c.rule, rule_metadata.c.key, rule_metadata.c.value])
-                    .where(rules.c.id.in_(applicable_rules))
-                    .order_by(rule_metadata.c.rule)
-                )).all()
-                metadata = {
-                    rule_id: {k: v for (_, k, v) in rows}
-                    for (rule_id, rows) in groupby(metadata_results, key=itemgetter(0))
-                }
-            else:
-                metadata = None
+                if include_metadata:
+                    metadata_results = (await conn.execute(
+                        select([rule_metadata.c.rule, rule_metadata.c.key, rule_metadata.c.value])
+                        .where(rule_metadata.c.rule.in_(applicable_rules))
+                        .order_by(rule_metadata.c.rule)
+                    )).all()
+                    metadata = {
+                        rule_id: {k: v for (_, k, v) in rows}
+                        for (rule_id, rows) in groupby(metadata_results, key=itemgetter(0))
+                    }
+                else:
+                    metadata = None
 
         ret = {}
         missing_settings = set(settings_results)
@@ -288,7 +288,7 @@ class RuleMixin(DBLogicBase):
                 InnerRuleSpec(
                     orjson.loads(row['value']),
                     applicable_rules[row['id']],
-                    metadata,
+                    metadata.get(row['id'], {}) if metadata is not None else None,
                     row['id']
                 )
                 for row in rows

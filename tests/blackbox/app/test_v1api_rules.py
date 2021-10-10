@@ -297,7 +297,10 @@ async def test_query_rules_fully_cached(metadata: bool, app_client, setup_rules,
 async def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, sql_service):
     with sql_service.connection() as connection:
         connection.execute("""
-        INSERT INTO rules (setting, value, metadata) VALUES ('b', '10', '{"test": "yes"}')
+        INSERT INTO rules (setting, value) VALUES ('b', '10')
+        """)
+        connection.execute("""
+        INSERT INTO rule_metadata (rule, key, value) VALUES (8, 'test', '"yes"')
         """)
 
     res = await app_client.post('/api/v1/rules/query', data=json.dumps({
@@ -349,7 +352,10 @@ async def test_query_rules_nooptions(metadata: bool, app_client, setup_rules):
 async def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, setup_rules, sql_service):
     with sql_service.connection() as connection:
         connection.execute("""
-        INSERT INTO rules (setting, value, metadata) VALUES ('b', '10', '{"test": "yes"}')
+        INSERT INTO rules (setting, value) VALUES ('b', '10')
+        """)
+        connection.execute("""
+        INSERT INTO rule_metadata (rule, key, value) VALUES (8, 'test', '"yes"')
         """)
 
     res = await app_client.post('/api/v1/rules/query', data=json.dumps({

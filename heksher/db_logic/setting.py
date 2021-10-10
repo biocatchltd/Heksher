@@ -66,10 +66,10 @@ class SettingMixin(DBLogicBase):
             ).scalars().all()
 
             if include_metadata:
-                metadata_ = dict(await conn.execute(
+                metadata_ = dict((await conn.execute(
                     select([setting_metadata.c.key, setting_metadata.c.value])
                     .where(setting_metadata.c.setting == name)
-                ))
+                )).all())
             else:
                 metadata_ = None
 
@@ -103,11 +103,12 @@ class SettingMixin(DBLogicBase):
                     [{'setting': setting.name, 'context_feature': cf} for cf in setting.configurable_features]
                 )
             )
-            await conn.execute(
-                setting_metadata.insert().values(
-                    [{'setting': setting.name, 'key': k, 'value': v} for (k, v) in setting.metadata.items()]
+            if setting.metadata:
+                await conn.execute(
+                    setting_metadata.insert().values(
+                        [{'setting': setting.name, 'key': k, 'value': v} for (k, v) in setting.metadata.items()]
+                    )
                 )
-            )
 
     async def update_setting(self, name: str, changed: Mapping[str, Any], new_contexts: Iterable[str],
                              new_metadata: Optional[Dict[str, Any]]):
@@ -171,8 +172,7 @@ class SettingMixin(DBLogicBase):
         """
         select_query = select([settings.c.name]).order_by(settings.c.name)
         if full_data:
-            select_query.append_column(settings.c.type)
-            select_query.append_column(settings.c.default_value)
+            select_query = select_query.add_columns(settings.c.type, settings.c.default_value)
 
         if full_data:
             async with self.db_engine.connect() as conn:
