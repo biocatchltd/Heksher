@@ -7,7 +7,7 @@ from _operator import itemgetter
 from sqlalchemy import String, column, join, not_, select, values
 
 from heksher.db_logic.logic_base import DBLogicBase
-from heksher.db_logic.metadata import configurable, context_features, settings, setting_metadata
+from heksher.db_logic.metadata import configurable, context_features, setting_metadata, settings
 from heksher.setting import Setting
 from heksher.setting_types import setting_type
 
@@ -34,8 +34,8 @@ class SettingMixin(DBLogicBase):
         async with self.db_engine.connect() as conn:
             results = (await conn.execute(
                 names_table.select()
-                    .where(not_(settings.select().where(settings.c.name == names_table.c.n).exists())))
-                       ).scalars().all()
+                .where(not_(settings.select().where(settings.c.name == names_table.c.n).exists())))
+            ).scalars().all()
 
         return results
 
@@ -51,24 +51,24 @@ class SettingMixin(DBLogicBase):
         async with self.db_engine.connect() as conn:
             data_row = (await conn.execute(
                 select([settings.c.type, settings.c.default_value])
-                    .where(settings.c.name == name))
-                        ).mappings().first()
+                .where(settings.c.name == name))
+            ).mappings().first()
 
             if data_row is None:
                 return None
 
             configurable_rows = (await conn.execute(
                 select([configurable.c.context_feature])
-                    .select_from(join(configurable, context_features,
-                                      configurable.c.context_feature == context_features.c.name))
-                    .where(configurable.c.setting == name)
-                    .order_by(context_features.c.index))
-                                 ).scalars().all()
+                .select_from(join(configurable, context_features,
+                                  configurable.c.context_feature == context_features.c.name))
+                .where(configurable.c.setting == name)
+                .order_by(context_features.c.index))
+            ).scalars().all()
 
             if include_metadata:
                 metadata_ = dict(await conn.execute(
                     select([setting_metadata.c.key, setting_metadata.c.value])
-                        .where(setting_metadata.c.setting == name)
+                    .where(setting_metadata.c.setting == name)
                 ))
             else:
                 metadata_ = None

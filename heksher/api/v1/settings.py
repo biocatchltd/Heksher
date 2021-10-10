@@ -153,7 +153,7 @@ async def get_setting(name: str, app: HeksherApp = application):
     """
     Get details on a setting.
     """
-    setting = await app.db_logic.get_setting(name)
+    setting = await app.db_logic.get_setting(name, include_metadata=True)
     if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
     return GetSettingOutput(name=setting.name, configurable_features=setting.configurable_features,

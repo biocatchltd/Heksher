@@ -9,7 +9,7 @@ import orjson
 from sqlalchemy import Integer, and_, cast, func, join, not_, select, tuple_
 
 from heksher.db_logic.logic_base import DBLogicBase
-from heksher.db_logic.metadata import conditions, context_features, rules, settings, rule_metadata
+from heksher.db_logic.metadata import conditions, context_features, rule_metadata, rules, settings
 
 
 class RuleSpec(NamedTuple):
@@ -189,8 +189,8 @@ class RuleMixin(DBLogicBase):
                 settings_results = (await conn.execute(
                     select([settings.c.name])
                     .where(
-                    settings.c.name.in_(setting_names)
-                    & (settings.c.last_touch_time >= setting_touch_time_cutoff)
+                        settings.c.name.in_(setting_names)
+                        & (settings.c.last_touch_time >= setting_touch_time_cutoff)
                     )
                 )).scalars().all()
         else:
@@ -278,6 +278,8 @@ class RuleMixin(DBLogicBase):
                     rule_id: {k: v for (_, k, v) in rows}
                     for (rule_id, rows) in groupby(metadata_results, key=itemgetter(0))
                 }
+            else:
+                metadata = None
 
         ret = {}
         missing_settings = set(settings_results)
@@ -286,7 +288,7 @@ class RuleMixin(DBLogicBase):
                 InnerRuleSpec(
                     orjson.loads(row['value']),
                     applicable_rules[row['id']],
-                    metadata if include_metadata else None,
+                    metadata,
                     row['id']
                 )
                 for row in rows

@@ -21,7 +21,7 @@ async def delete_rule(rule_id: int, app: HeksherApp = application):
     """
     Remove a rule.
     """
-    rule_spec = await app.db_logic.get_rule(rule_id)
+    rule_spec = await app.db_logic.get_rule(rule_id, include_metadata=False)
 
     if not rule_spec:
         return PlainTextResponse('rule with id not found', status_code=status.HTTP_404_NOT_FOUND)
@@ -82,7 +82,7 @@ async def add_rule(input: AddRuleInput, app: HeksherApp = application):
     """
     Add a rule, and get its ID.
     """
-    setting: Optional[Setting] = await app.db_logic.get_setting(input.setting)
+    setting: Optional[Setting] = await app.db_logic.get_setting(input.setting, include_metadata=False)
     if not setting:
         return PlainTextResponse(f'setting not found with name {input.setting}',
                                  status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
@@ -114,11 +114,11 @@ async def patch_rule(rule_id: int, input: PatchRuleInput, app: HeksherApp = appl
     """
     Modify existing rule's value
     """
-    rule = await app.db_logic.get_rule(rule_id)
+    rule = await app.db_logic.get_rule(rule_id, include_metadata=False)
     if not rule:
         return PlainTextResponse('rule not found', status_code=status.HTTP_404_NOT_FOUND)
 
-    setting = await app.db_logic.get_setting(rule.setting)
+    setting = await app.db_logic.get_setting(rule.setting, include_metadata=False)
     assert setting
 
     if not setting.type.validate(input.value):
