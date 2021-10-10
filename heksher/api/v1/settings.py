@@ -59,7 +59,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     Ensure that a setting exists, creating it if necessary.
     """
     new_setting = input.to_setting()
-    existing = await app.db_logic.get_setting(input.name)
+    existing = await app.db_logic.get_setting(input.name, include_metadata=True)
     if existing is None:
         not_cf = await app.db_logic.get_not_found_context_features(input.configurable_features)
         if not_cf:
@@ -115,10 +115,12 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
         logger.info('changing setting metadata',
                     extra={'setting_name': new_setting.name, 'new_metadata': new_setting.metadata})
         changed.extend('metadata.' + k for k in sorted(metadata_changed))
-        to_change['metadata'] = str(orjson.dumps(new_setting.metadata), 'utf-8')
+        new_metadata = new_setting.metadata
+    else:
+        new_metadata = None
 
     if to_change or new_configurable_features:
-        await app.db_logic.update_setting(input.name, to_change, new_configurable_features)
+        await app.db_logic.update_setting(input.name, to_change, new_configurable_features, new_metadata)
     return DeclareSettingOutput(created=False, changed=changed, incomplete=incomplete)
 
 
@@ -151,7 +153,7 @@ async def get_setting(name: str, app: HeksherApp = application):
     """
     Get details on a setting.
     """
-    setting = await app.db_logic.get_setting(name)
+    setting = await app.db_logic.get_setting(name, include_metadata=True)
     if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
     return GetSettingOutput(name=setting.name, configurable_features=setting.configurable_features,

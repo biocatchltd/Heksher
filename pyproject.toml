@@ -18,7 +18,6 @@ alembic = {version="^1.4.3", optional=true}
 SQLAlchemy = "^1.4.21"
 asyncpg = "^0.23.0"
 aiologstash = "^2.0.0"
-yellowbox = "^0.4.1"
 sentry-sdk = "^1.1.0"
 async-asgi-testclient = "^1.4.6"
 
@@ -27,7 +26,7 @@ pytest-asyncio = "*"
 pytest-cov = "^2.10"
 flake8 = "^3.8.4"
 requests = "^2.25.1"
-yellowbox = {extras = ["postgresql"], version = "^0.4.0"}
+yellowbox = {extras = ["postgresql"], version = "^0.6.4"}
 mypy = "^0.902"
 types-orjson = "^0.1.1"
 isort = "^5.9.1"

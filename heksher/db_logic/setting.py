@@ -7,7 +7,7 @@ from _operator import itemgetter
 from sqlalchemy import String, column, join, not_, select, values
 
 from heksher.db_logic.logic_base import DBLogicBase
-from heksher.db_logic.metadata import configurable, context_features, settings
+from heksher.db_logic.metadata import configurable, context_features, setting_metadata, settings
 from heksher.setting import Setting
 from heksher.setting_types import setting_type
 
@@ -35,11 +35,11 @@ class SettingMixin(DBLogicBase):
             results = (await conn.execute(
                 names_table.select()
                 .where(not_(settings.select().where(settings.c.name == names_table.c.n).exists())))
-                       ).scalars().all()
+            ).scalars().all()
 
         return results
 
-    async def get_setting(self, name: str) -> Optional[Setting]:
+    async def get_setting(self, name: str, include_metadata: bool) -> Optional[Setting]:
         """
         Args:
             name: The name of a setting
@@ -50,9 +50,12 @@ class SettingMixin(DBLogicBase):
         """
         async with self.db_engine.connect() as conn:
             data_row = (await conn.execute(
-                select([settings.c.type, settings.c.default_value, settings.c.metadata])
+                select([settings.c.type, settings.c.default_value])
                 .where(settings.c.name == name))
-                        ).mappings().first()
+            ).mappings().first()
+
+            if data_row is None:
+                return None
 
             configurable_rows = (await conn.execute(
                 select([configurable.c.context_feature])
@@ -60,16 +63,17 @@ class SettingMixin(DBLogicBase):
                                   configurable.c.context_feature == context_features.c.name))
                 .where(configurable.c.setting == name)
                 .order_by(context_features.c.index))
-                                 ).scalars().all()
+            ).scalars().all()
 
-        # we query both the rule and its configurable features at the same time. Meaning that if the rule does not
-        # exist, we make 1 too many calls. However, we expect to make so few get_setting calls to non-existent rules
-        # that this is negligible
-        if data_row is None:
-            return None
+            if include_metadata:
+                metadata_ = dict((await conn.execute(
+                    select([setting_metadata.c.key, setting_metadata.c.value])
+                    .where(setting_metadata.c.setting == name)
+                )).all())
+            else:
+                metadata_ = None
 
         type_ = setting_type(data_row['type'])
-        metadata_ = orjson.loads(data_row['metadata'])
         default_value_ = orjson.loads(data_row['default_value'])
         return Setting(
             name,
@@ -92,7 +96,6 @@ class SettingMixin(DBLogicBase):
                     type=str(setting.type),
                     default_value=str(orjson.dumps(setting.default_value), 'utf-8'),
                     last_touch_time=datetime.utcnow(),
-                    metadata=str(orjson.dumps(setting.metadata), 'utf-8')
                 )
             )
             await conn.execute(
@@ -100,8 +103,15 @@ class SettingMixin(DBLogicBase):
                     [{'setting': setting.name, 'context_feature': cf} for cf in setting.configurable_features]
                 )
             )
+            if setting.metadata:
+                await conn.execute(
+                    setting_metadata.insert().values(
+                        [{'setting': setting.name, 'key': k, 'value': v} for (k, v) in setting.metadata.items()]
+                    )
+                )
 
-    async def update_setting(self, name: str, changed: Mapping[str, Any], new_contexts: Iterable[str]):
+    async def update_setting(self, name: str, changed: Mapping[str, Any], new_contexts: Iterable[str],
+                             new_metadata: Optional[Dict[str, Any]]):
         """
         Edit an existing setting in the DB
         Args:
@@ -118,6 +128,15 @@ class SettingMixin(DBLogicBase):
                 await conn.execute(
                     configurable.insert().values(
                         [{'setting': name, 'context_feature': cf} for cf in new_contexts]
+                    )
+                )
+            if new_metadata is not None:
+                await conn.execute(
+                    setting_metadata.delete().where(setting_metadata.c.setting == name)
+                )
+                await conn.execute(
+                    setting_metadata.insert().values(
+                        [{'setting': name, 'key': k, 'value': v} for (k, v) in new_metadata.items()]
                     )
                 )
 
@@ -146,16 +165,14 @@ class SettingMixin(DBLogicBase):
             resp = (await conn.execute(settings.delete().where(settings.c.name == name))).rowcount
         return resp == 1
 
-    async def get_settings(self, full_data) -> List[SettingSpec]:
+    async def get_settings(self, full_data: bool) -> List[SettingSpec]:
         """
         Returns:
             A list of all setting names in the DB
         """
         select_query = select([settings.c.name]).order_by(settings.c.name)
         if full_data:
-            select_query.append_column(settings.c.type)
-            select_query.append_column(settings.c.default_value)
-            select_query.append_column(settings.c.metadata)
+            select_query = select_query.add_columns(settings.c.type, settings.c.default_value)
 
         if full_data:
             async with self.db_engine.connect() as conn:
@@ -166,22 +183,30 @@ class SettingMixin(DBLogicBase):
                                       configurable.c.context_feature == context_features.c.name))
                     .order_by(configurable.c.setting, context_features.c.index)
                 )).mappings().all()
+                metadata_rows = await conn.execute(
+                    select([setting_metadata.c.setting, setting_metadata.c.key, setting_metadata.c.value])
+                    .order_by(setting_metadata.c.setting)
+                )
 
             configurables = {
                 setting: [row['context_feature'] for row in rows]
                 for (setting, rows) in groupby(configurable_rows, key=itemgetter('setting'))
             }
+            metadata = {
+                setting: {k: v for (_, k, v) in rows} for (setting, rows) in groupby(metadata_rows, key=itemgetter(0))
+            }
         else:
             async with self.db_engine.connect() as conn:
                 records = (await conn.execute(select_query)).mappings().all()
             configurables = {}
+            metadata = None
 
         return [
             SettingSpec(
                 row['name'],
                 row['type'] if full_data else None,
                 orjson.loads(row['default_value']) if full_data else None,
-                orjson.loads(row['metadata']) if full_data else None,
+                metadata.get(row['name'], {}) if full_data else None,
                 configurables[row['name']] if full_data else None
             ) for row in records
         ]

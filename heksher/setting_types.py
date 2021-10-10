@@ -78,7 +78,9 @@ class SettingType(ABC):
     @classmethod
     def __modify_schema__(cls, field_schema):
         field_schema.update(
-            examples=['int', 'str', 'float', 'bool', 'Enum["blue", "green", "red"]', 'Sequence<Mapping<str>>'],
+            title='Setting Type',
+            type='string',
+            example=['int', 'str', 'float', 'bool', 'Enum["blue", "green", "red"]', 'Sequence<Mapping<str>>'],
         )
 
 
