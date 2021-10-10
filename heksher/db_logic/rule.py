@@ -6,7 +6,7 @@ from operator import itemgetter
 from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 import orjson
-from sqlalchemy import Integer, and_, cast, func, join, not_, select, tuple_
+from sqlalchemy import and_, func, join, not_, select, tuple_
 
 from heksher.db_logic.logic_base import DBLogicBase
 from heksher.db_logic.metadata import conditions, context_features, rule_metadata, rules, settings
