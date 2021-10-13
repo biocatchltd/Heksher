@@ -9,7 +9,6 @@ from heksher.api.v1.util import ORJSONModel, application, router as v1_router
 from heksher.api.v1.validation import ContextFeatureName
 from heksher.app import HeksherApp
 
-
 router = APIRouter(prefix='/context_features')
 
 

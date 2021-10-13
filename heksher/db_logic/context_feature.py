@@ -1,10 +1,10 @@
 from logging import getLogger
 from typing import AbstractSet, Iterable, Sequence
 
-from sqlalchemy import select, and_, desc
+from sqlalchemy import and_, desc, select
 
 from heksher.db_logic.logic_base import DBLogicBase
-from heksher.db_logic.metadata import context_features, configurable, conditions
+from heksher.db_logic.metadata import configurable, context_features
 from heksher.db_logic.util import supersequence_new_elements
 
 logger = getLogger(__name__)
