@@ -70,7 +70,7 @@ class ContextFeatureMixin(DBLogicBase):
         # todo improve? we expect both sets to be very small (<20 elements)
         return set(candidates) - set(await self.get_context_features())
 
-    async def get_context_feature_index(self, context_feature: str):
+    async def get_context_feature_index(self, context_feature: str) -> int:
         """
         Args:
             context_feature: a potential context feature name.
@@ -85,9 +85,11 @@ class ContextFeatureMixin(DBLogicBase):
 
     async def is_configurable_setting_from_context_features(self, context_feature: str):
         async with self.db_engine.connect() as conn:
-            setting_of_cf = (await conn.execute(select([configurable.c.setting])
-                                                .where(configurable.c.context_feature == context_feature))) \
+            setting_of_cf = (
+                (await conn.execute(select([configurable.c.setting])
+                                    .where(configurable.c.context_feature == context_feature)))
                 .scalar_one_or_none()
+            )
             return setting_of_cf is not None
 
     async def delete_context_feature(self, context_feature: str):
@@ -116,10 +118,10 @@ class ContextFeatureMixin(DBLogicBase):
         """
 
         async with self.db_engine.begin() as conn:
-            # first, change the index of the context feature to be moved to -2 so it won't be overridden
+            # first, change the index of the context feature to be moved to -1 so it won't be overridden
             await conn.execute(context_features.update()
                                .where(context_features.c.index == index_to_move)
-                               .values(index=-2))
+                               .values(index=-1))
             if index_to_move < target_index:
                 # move in between context features one step back
                 await conn.execute(context_features.update()
@@ -128,7 +130,7 @@ class ContextFeatureMixin(DBLogicBase):
                                    .values(index=context_features.c.index - 1))
                 # update the index of the context feature to be moved to its correct position
                 await conn.execute(context_features.update()
-                                   .where(context_features.c.index == -2)
+                                   .where(context_features.c.index == -1)
                                    .values(index=target_index))
             else:
                 # move in between context features one step forward
@@ -138,20 +140,17 @@ class ContextFeatureMixin(DBLogicBase):
                                    .values(index=context_features.c.index + 1))
                 # update the index of the context feature to be moved to its correct position
                 await conn.execute(context_features.update()
-                                   .where(context_features.c.index == -2)
+                                   .where(context_features.c.index == -1)
                                    .values(index=target_index+1))
 
-    async def add_context_feature(self, context_feature: str) -> int:
+    async def add_context_feature(self, context_feature: str):
         """
         Adds context feature to end of the context_features table.
         Args:
             context_feature: context_feature to be inserted.
-        Returns: the index given to the new context feature.
-
         """
         async with self.db_engine.begin() as conn:
             last_index = (await conn.execute(
                 select([context_features.c.index]).order_by(desc(context_features.c.index)).limit(1),
             )).scalar_one()
             await conn.execute(context_features.insert().values([{"name": context_feature, "index": last_index + 1}]))
-        return last_index + 1
