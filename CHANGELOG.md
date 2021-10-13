@@ -3,6 +3,7 @@
 ### Added
 * Setting names can now include the `.` character
 * Added schema information for setting types
+* Added POST, PATCH and DELETE API's to context_features, allowing run-time modifications
 ### Changed
 * Heksher now uses sqlalchemy instead of databases
 * inline_sql method removed, uses sqlalchemy validation instead

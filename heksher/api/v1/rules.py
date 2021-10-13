@@ -24,7 +24,7 @@ async def delete_rule(rule_id: int, app: HeksherApp = application):
     rule_spec = await app.db_logic.get_rule(rule_id, include_metadata=False)
 
     if not rule_spec:
-        return PlainTextResponse('rule with id not found', status_code=status.HTTP_404_NOT_FOUND)
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
 
     await app.db_logic.delete_rule(rule_id)
     await app.db_logic.touch_setting(rule_spec.setting)
@@ -54,7 +54,7 @@ async def search_rule(input: SearchRuleInput, app: HeksherApp = application):
     """
     rule_id = await app.db_logic.get_rule_id(input.setting, input.feature_values)
     if not rule_id:
-        return PlainTextResponse('rule not found', status_code=status.HTTP_404_NOT_FOUND)
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
     return SearchRuleOutput(rule_id=rule_id)
 
 
@@ -116,7 +116,7 @@ async def patch_rule(rule_id: int, input: PatchRuleInput, app: HeksherApp = appl
     """
     rule = await app.db_logic.get_rule(rule_id, include_metadata=False)
     if not rule:
-        return PlainTextResponse('rule not found', status_code=status.HTTP_404_NOT_FOUND)
+        return PlainTextResponse(status_code=status.HTTP_404_NOT_FOUND)
 
     setting = await app.db_logic.get_setting(rule.setting, include_metadata=False)
     assert setting
@@ -258,7 +258,7 @@ async def get_rule(rule_id: int, app: HeksherApp = application):
     rule_spec = await app.db_logic.get_rule(rule_id, include_metadata=True)
 
     if not rule_spec:
-        return PlainTextResponse('rule with id not found', status_code=status.HTTP_404_NOT_FOUND)
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
 
     return GetRuleOutput(setting=rule_spec.setting, value=rule_spec.value,
                          feature_values=rule_spec.feature_values, metadata=rule_spec.metadata)
