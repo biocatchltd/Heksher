@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import AbstractSet, Iterable, Sequence
+from typing import AbstractSet, Iterable, Optional, Sequence
 
 from sqlalchemy import and_, desc, select
 
@@ -70,7 +70,7 @@ class ContextFeatureMixin(DBLogicBase):
         # todo improve? we expect both sets to be very small (<20 elements)
         return set(candidates) - set(await self.get_context_features())
 
-    async def get_context_feature_index(self, context_feature: str) -> int:
+    async def get_context_feature_index(self, context_feature: str) -> Optional[int]:
         """
         Args:
             context_feature: a potential context feature name.

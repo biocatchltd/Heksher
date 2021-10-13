@@ -1,21 +1,6 @@
 import json
 
-from pytest import fixture, mark
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import create_async_engine
-
-from heksher.db_logic.metadata import context_features
-
-
-@fixture
-async def check_indexes_of_cf(sql_service):
-    yield
-    sql_connection_string = sql_service.local_connection_string(driver="asyncpg")
-    engine = create_async_engine(sql_connection_string)
-    async with engine.connect() as conn:
-        rows = (await conn.execute(select([context_features.c.index])
-                                   .order_by(context_features.c.index))).scalars().all()
-    assert rows == list(range(len(rows)))
+from pytest import mark
 
 
 @mark.asyncio
@@ -42,7 +27,7 @@ async def test_is_not_context_feature(app_client):
 
 
 @mark.asyncio
-async def test_delete_context_feature(app_client, check_indexes_of_cf):
+async def test_delete_context_feature(app_client):
     response = await app_client.delete('/api/v1/context_features/trust')
     response.raise_for_status()
     context_features = await app_client.get('/api/v1/context_features')
@@ -59,7 +44,7 @@ async def test_delete_context_feature_failed(size_limit_setting, app_client):
 
 
 @mark.asyncio
-async def test_patch_after_context_feature(check_indexes_of_cf, app_client):
+async def test_patch_after_context_feature(app_client):
     response = await app_client.patch('/api/v1/context_features/trust/index', data=json.dumps(
         {"to_after": "theme"}
     ))
@@ -71,7 +56,7 @@ async def test_patch_after_context_feature(check_indexes_of_cf, app_client):
 
 
 @mark.asyncio
-async def test_patch_before_context_feature(check_indexes_of_cf, app_client):
+async def test_patch_before_context_feature(app_client):
     response = await app_client.patch('/api/v1/context_features/trust/index', data=json.dumps(
         {"to_before": "user"}
     ))
@@ -92,7 +77,7 @@ async def test_patch_context_feature_doesnt_exists(app_client):
 
 
 @mark.asyncio
-async def test_add_context_feature(check_indexes_of_cf, app_client):
+async def test_add_context_feature(app_client):
     response = await app_client.post('/api/v1/context_features', data=json.dumps(
         {"context_feature": "black"}
     ))

@@ -42,7 +42,7 @@ async def get_context_feature(name: str, app: HeksherApp = application):
 @router.delete('/{name}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response,
                responses={
                    status.HTTP_409_CONFLICT: {
-                       "description": "context feature can't be deleted",
+                       "description": "context feature is in use",
                    }
                }
                )
