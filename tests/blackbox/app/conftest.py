@@ -5,8 +5,11 @@ from subprocess import run
 
 from async_asgi_testclient import TestClient
 from pytest import fixture
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import create_async_engine
 from yellowbox.extras.postgresql import PostgreSQLService
 
+from heksher.db_logic.metadata import context_features
 from heksher.main import app
 
 
@@ -32,7 +35,18 @@ def purge_sql(sql_service):
 
 
 @fixture
-async def app_client(monkeypatch, sql_service, purge_sql):
+async def check_indexes_of_cf(sql_service):
+    yield
+    sql_connection_string = sql_service.local_connection_string(driver="asyncpg")
+    engine = create_async_engine(sql_connection_string)
+    async with engine.connect() as conn:
+        rows = (await conn.execute(select([context_features.c.index])
+                                   .order_by(context_features.c.index))).scalars().all()
+    assert rows == list(range(len(rows)))
+
+
+@fixture
+async def app_client(monkeypatch, sql_service, purge_sql, check_indexes_of_cf):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
