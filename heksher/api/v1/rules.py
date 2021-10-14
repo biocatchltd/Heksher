@@ -264,4 +264,78 @@ async def get_rule(rule_id: int, app: HeksherApp = application):
                          feature_values=rule_spec.feature_values, metadata=rule_spec.metadata)
 
 
+class InputRuleMetadata(ORJSONModel):
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="user-defined metadata of the rule")
+
+
+@router.post('/{rule_id}/metadata', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def update_rule_metadata(rule_id: int, input: InputRuleMetadata, app: HeksherApp = application):
+    """
+    Update the rule's metadata
+    """
+    if not input.metadata:
+        return None
+    if not await app.db_logic.get_rule(rule_id, include_metadata=False):
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
+    await app.db_logic.update_rule_metadata(rule_id, input.metadata)
+
+
+@router.put('/{rule_id}/metadata', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def replace_rule_metadata(rule_id: int, input: InputRuleMetadata, app: HeksherApp = application):
+    """
+    Change the current metadata of the rule.
+    """
+    if not await app.db_logic.get_rule(rule_id, include_metadata=False):
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
+    if not input.metadata:
+        # empty dictionary equals to deleting the metadata
+        await app.db_logic.delete_rule_metadata(rule_id)
+    else:
+        await app.db_logic.replace_rule_metadata(rule_id, input.metadata)
+
+
+class PutRuleMetadataKey(ORJSONModel):
+    value: Any = Field(description="the new value of the given key and rule in the rule's metadata")
+
+
+@router.put('/{rule_id}/metadata/{key}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def update_rule_metadata_key(rule_id: int, key: str, input: PutRuleMetadataKey, app: HeksherApp = application):
+    """
+    Change the current metadata of the rule.
+    """
+    if not await app.db_logic.get_rule(rule_id, include_metadata=False):
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
+    await app.db_logic.update_rule_metadata_key(rule_id, key, input.value)
+
+
+@router.delete('/{rule_id}/metadata', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def delete_rule_metadata(rule_id: int, app: HeksherApp = application):
+    """
+    Delete a rule's metadata.
+    """
+    deleted = await app.db_logic.delete_rule_metadata(rule_id)
+    if not deleted:
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
+
+
+class GetRuleMetadataOutput(ORJSONModel):
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="user-defined metadata of the rule")
+
+
+@router.get('/{rule_id}/metadata', response_model=GetRuleMetadataOutput,
+            responses={
+                status.HTTP_404_NOT_FOUND: {
+                    "description": "The rule does not exist.",
+                }
+            })
+async def get_rule_metadata(rule_id: int, app: HeksherApp = application):
+    """
+    Get metadata of a rule.
+    """
+    if not await app.db_logic.get_rule(rule_id, include_metadata=False):
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
+    metadata = await app.db_logic.get_rule_metadata(rule_id)
+    return GetRuleMetadataOutput(metadata=metadata)
+
+
 v1_router.include_router(router)

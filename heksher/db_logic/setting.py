@@ -4,7 +4,7 @@ from typing import Any, Collection, Dict, Iterable, List, Mapping, NamedTuple, O
 
 import orjson
 from _operator import itemgetter
-from sqlalchemy import String, column, join, not_, select, values
+from sqlalchemy import String, and_, column, join, not_, or_, select, values
 
 from heksher.db_logic.logic_base import DBLogicBase
 from heksher.db_logic.metadata import configurable, context_features, setting_metadata, settings
@@ -35,7 +35,7 @@ class SettingMixin(DBLogicBase):
             results = (await conn.execute(
                 names_table.select()
                 .where(not_(settings.select().where(settings.c.name == names_table.c.n).exists())))
-            ).scalars().all()
+                       ).scalars().all()
 
         return results
 
@@ -43,7 +43,7 @@ class SettingMixin(DBLogicBase):
         """
         Args:
             name: The name of a setting
-
+            include_metadata: whether to include setting metadata
         Returns:
             The setting object for the setting in the DB with the same name, or None if it does not exist
 
@@ -52,7 +52,7 @@ class SettingMixin(DBLogicBase):
             data_row = (await conn.execute(
                 select([settings.c.type, settings.c.default_value])
                 .where(settings.c.name == name))
-            ).mappings().first()
+                        ).mappings().first()
 
             if data_row is None:
                 return None
@@ -63,7 +63,7 @@ class SettingMixin(DBLogicBase):
                                   configurable.c.context_feature == context_features.c.name))
                 .where(configurable.c.setting == name)
                 .order_by(context_features.c.index))
-            ).scalars().all()
+                                 ).scalars().all()
 
             if include_metadata:
                 metadata_ = dict((await conn.execute(
@@ -118,6 +118,7 @@ class SettingMixin(DBLogicBase):
             name: The name of the setting to edit
             changed: The fields of the setting to change
             new_contexts: An iterable of new context names to assign to the setting as configurable
+            new_metadata: Optional, new metadata to assign to the setting
         """
         async with self.db_engine.begin() as conn:
             if changed:
@@ -210,3 +211,93 @@ class SettingMixin(DBLogicBase):
                 configurables[row['name']] if full_data else None
             ) for row in records
         ]
+
+    async def update_setting_metadata(self, name: str, metadata: Dict[str, Any]):
+        """
+        Update the metadata of the given setting. Similar to the dict.update() method, meaning that for existing keys,
+        the value will be updated, and new keys will be added as well.
+        Args:
+            name: the name of the setting to update it's metadata.
+            metadata: the metadata to update.
+        """
+        async with self.db_engine.begin() as conn:
+            # first, delete the keys that already exists in the table
+            await conn.execute(setting_metadata.delete()
+                               .where(and_(setting_metadata.c.setting == name,
+                                           or_(setting_metadata.c.key == key for key in metadata.keys())))
+                               )
+            # after this, we can insert the new metadata
+            await conn.execute(
+                setting_metadata.insert().values(
+                    [{'setting': name, 'key': k, 'value': v} for (k, v) in metadata.items()]
+                )
+            )
+
+    async def replace_setting_metadata(self, name: str, new_metadata: Dict[str, Any]):
+        """
+        Replace the metadata of the given setting with new metadata.
+        Args:
+             name: the name of the setting to change its metadata.
+             new_metadata: the new metadata for the setting.
+        """
+        async with self.db_engine.begin() as conn:
+            await conn.execute(setting_metadata.delete()
+                               .where(setting_metadata.c.setting == name)
+                               )
+            await conn.execute(
+                setting_metadata.insert().values(
+                    [{'setting': name, 'key': k, 'value': v} for (k, v) in new_metadata.items()]
+                )
+            )
+
+    async def update_setting_metadata_key(self, name: str, key: str, new_value: Any):
+        """
+        Updates a specific key of the setting's metadata.
+        Args:
+            name: the name of the setting to change its metadata.
+            key: the key to update.
+            new_value: the value to update for the given key.
+        """
+        async with self.db_engine.begin() as conn:
+            key_exists = (
+                await conn.execute(select([setting_metadata.c.key])
+                                   .where(and_(setting_metadata.c.setting == name,
+                                               setting_metadata.c.key == key)))
+            ).scalar_one_or_none()
+            if key_exists:
+                await conn.execute(setting_metadata.update()
+                                   .where(and_(setting_metadata.c.setting == name,
+                                               setting_metadata.c.key == key))
+                                   .values(value=new_value))
+            else:
+                await conn.execute(setting_metadata.insert()
+                                   .values([{'setting': name, 'key': key, 'value': new_value}]))
+
+    async def delete_setting_metadata(self, name: str):
+        """
+        Remove a setting's metadata from the DB
+        Args:
+            name: the name of the setting to remove its metadata
+        Returns:
+            Whether a setting with the name was found
+        """
+        async with self.db_engine.begin() as conn:
+            resp = (await conn.execute(setting_metadata.delete().where(setting_metadata.c.setting == name))).rowcount
+        return resp >= 1
+
+    async def get_setting_metadata(self, name: str) -> Optional[Dict[str, Any]]:
+        """
+        Args:
+            name: the setting to get its metadata.
+        Returns:
+            the metadata of the setting.
+        """
+        async with self.db_engine.connect() as conn:
+            record = (
+                await conn.execute(select([setting_metadata.c.key, setting_metadata.c.value])
+                                   .where(setting_metadata.c.setting == name))
+            ).mappings().all()
+        if record:
+            return {row["key"]: row["value"] for row in record}
+        else:
+            return {}

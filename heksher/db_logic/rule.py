@@ -6,7 +6,7 @@ from operator import itemgetter
 from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 import orjson
-from sqlalchemy import and_, func, join, not_, select, tuple_
+from sqlalchemy import and_, func, join, not_, or_, select, tuple_
 
 from heksher.db_logic.logic_base import DBLogicBase
 from heksher.db_logic.metadata import conditions, context_features, rule_metadata, rules, settings
@@ -298,3 +298,93 @@ class RuleMixin(DBLogicBase):
         for setting in missing_settings:
             ret[setting] = []
         return ret
+
+    async def update_rule_metadata(self, rule_id: int, metadata: Dict[str, Any]):
+        """
+        Update the metadata of the given rule. Similar to the dict.update() method, meaning that for existing keys,
+        the value will be updated, and new keys will be added as well.
+        Args:
+            rule_id: the id of the rule to update it's metadata.
+            metadata: the metadata to update.
+        """
+        async with self.db_engine.begin() as conn:
+            # first, delete the keys that already exists in the table
+            await conn.execute(rule_metadata.delete()
+                               .where(and_(rule_metadata.c.rule == rule_id,
+                                           or_(rule_metadata.c.key == key for key in metadata.keys())))
+                               )
+            # after this, we can insert the new metadata
+            await conn.execute(
+                rule_metadata.insert().values(
+                    [{'rule': rule_id, 'key': k, 'value': v} for (k, v) in metadata.items()]
+                )
+            )
+
+    async def replace_rule_metadata(self, rule_id: int, new_metadata: Dict[str, Any]):
+        """
+        Replace the metadata of the given rule with new metadata.
+        Args:
+             rule_id: the id of  the rule to change its metadata.
+             new_metadata: the new metadata for the rule.
+        """
+        async with self.db_engine.begin() as conn:
+            await conn.execute(rule_metadata.delete()
+                               .where(rule_metadata.c.rule == rule_id)
+                               )
+            await conn.execute(
+                rule_metadata.insert().values(
+                    [{'rule': rule_id, 'key': k, 'value': v} for (k, v) in new_metadata.items()]
+                )
+            )
+
+    async def update_rule_metadata_key(self, rule_id: int, key: str, new_value: Any):
+        """
+        Updates a specific key of the rule's metadata.
+        Args:
+            rule_id: the id of the rule to change its metadata.
+            key: the key to update.
+            new_value: the value to update for the given key.
+        """
+        async with self.db_engine.begin() as conn:
+            key_exists = (
+                await conn.execute(select([rule_metadata.c.key])
+                                   .where(and_(rule_metadata.c.rule == rule_id,
+                                               rule_metadata.c.key == key)))
+            ).scalar_one_or_none()
+            if key_exists:
+                await conn.execute(rule_metadata.update()
+                                   .where(and_(rule_metadata.c.rule == rule_id,
+                                               rule_metadata.c.key == key))
+                                   .values(value=new_value))
+            else:
+                await conn.execute(rule_metadata.insert()
+                                   .values([{'rule': rule_id, 'key': key, 'value': new_value}]))
+
+    async def delete_rule_metadata(self, rule_id: int):
+        """
+        Remove a rule's metadata from the DB
+        Args:
+            rule_id: the id of the rule to remove its metadata
+        Returns:
+            Whether a rule with the name was found
+        """
+        async with self.db_engine.begin() as conn:
+            resp = (await conn.execute(rule_metadata.delete().where(rule_metadata.c.rule == rule_id))).rowcount
+        return resp >= 1
+
+    async def get_rule_metadata(self, rule_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Args:
+            rule_id: the id of the rule to get its metadata.
+        Returns:
+            the metadata of the rule.
+        """
+        async with self.db_engine.connect() as conn:
+            record = (
+                await conn.execute(select([rule_metadata.c.key, rule_metadata.c.value])
+                                   .where(rule_metadata.c.rule == rule_id))
+            ).mappings().all()
+        if record:
+            return {row["key"]: row["value"] for row in record}
+        else:
+            return {}

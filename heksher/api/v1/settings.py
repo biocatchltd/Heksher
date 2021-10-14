@@ -1,6 +1,6 @@
 from datetime import datetime
 from logging import getLogger
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import orjson
 from fastapi import APIRouter, Response
@@ -27,7 +27,7 @@ class DeclareSettingInput(ORJSONModel):
     type: SettingType = Field(description="the type of the setting")
     default_value: Any = Field(None, description="the default value of the rule, must be applicable to the setting's"
                                                  " value")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="user-defined metadata of the rule")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="user-defined metadata of the setting")
 
     def to_setting(self) -> Setting:
         return Setting(self.name, self.type, self.default_value, self.configurable_features, self.metadata)
@@ -204,6 +204,80 @@ async def get_settings(include_additional_data: bool = False, app: HeksherApp = 
                 name=spec.name
             ) for spec in results
         ])
+
+
+class InputSettingMetadata(ORJSONModel):
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="user-defined metadata of the setting")
+
+
+@router.post('/{name}/metadata', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def update_setting_metadata(name: str, input: InputSettingMetadata, app: HeksherApp = application):
+    """
+    Update the setting's metadata
+    """
+    if not input.metadata:
+        return None
+    if not await app.db_logic.get_setting(name, include_metadata=False):
+        return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
+    await app.db_logic.update_setting_metadata(name, input.metadata)
+
+
+@router.put('/{name}/metadata', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def replace_setting_metadata(name: str, input: InputSettingMetadata, app: HeksherApp = application):
+    """
+    Change the current metadata of the setting.
+    """
+    if not await app.db_logic.get_setting(name, include_metadata=False):
+        return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
+    if not input.metadata:
+        # empty dictionary equals to deleting the metadata
+        await app.db_logic.delete_setting_metadata(name)
+    else:
+        await app.db_logic.replace_setting_metadata(name, input.metadata)
+
+
+class PutSettingMetadataKey(ORJSONModel):
+    value: Any = Field(description="the new value of the given key and setting in the setting's metadata")
+
+
+@router.put('/{name}/metadata/{key}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def update_setting_metadata_key(name: str, key: str, input: PutSettingMetadataKey, app: HeksherApp = application):
+    """
+    Change the current metadata of the setting.
+    """
+    if not await app.db_logic.get_setting(name, include_metadata=False):
+        return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
+    await app.db_logic.update_setting_metadata_key(name, key, input.value)
+
+
+@router.delete('/{name}/metadata', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def delete_setting_metadata(name: str, app: HeksherApp = application):
+    """
+    Delete a setting's metadata.
+    """
+    deleted = await app.db_logic.delete_setting_metadata(name)
+    if not deleted:
+        return PlainTextResponse('setting name not found', status_code=status.HTTP_404_NOT_FOUND)
+
+
+class GetSettingMetadataOutput(ORJSONModel):
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="user-defined metadata of the setting")
+
+
+@router.get('/{name}/metadata', response_model=GetSettingMetadataOutput,
+            responses={
+                status.HTTP_404_NOT_FOUND: {
+                    "description": "The setting does not exist.",
+                }
+            })
+async def get_setting_metadata(name: str, app: HeksherApp = application):
+    """
+    Get metadata of a setting.
+    """
+    if not await app.db_logic.get_setting(name, include_metadata=False):
+        return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
+    metadata = await app.db_logic.get_setting_metadata(name)
+    return GetSettingMetadataOutput(metadata=metadata)
 
 
 v1_router.include_router(router)
