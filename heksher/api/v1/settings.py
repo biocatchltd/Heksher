@@ -9,7 +9,7 @@ from starlette import status
 from starlette.responses import PlainTextResponse
 
 from heksher.api.v1.util import ORJSONModel, application, router as v1_router
-from heksher.api.v1.validation import ContextFeatureName, SettingName
+from heksher.api.v1.validation import ContextFeatureName, MetadataKey, SettingName
 from heksher.app import HeksherApp
 from heksher.setting import Setting
 from heksher.setting_types import SettingType
@@ -27,7 +27,7 @@ class DeclareSettingInput(ORJSONModel):
     type: SettingType = Field(description="the type of the setting")
     default_value: Any = Field(None, description="the default value of the rule, must be applicable to the setting's"
                                                  " value")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="user-defined metadata of the setting")
+    metadata: Dict[MetadataKey, Any] = Field(default_factory=dict, description="user-defined metadata of the setting")
 
     def to_setting(self) -> Setting:
         return Setting(self.name, self.type, self.default_value, self.configurable_features, self.metadata)
@@ -140,7 +140,7 @@ class GetSettingOutput(ORJSONModel):
                                                          " by")
     type: str = Field(description="the type of the setting")
     default_value: Any = Field(description="the default value of the setting")
-    metadata: Dict[str, Any] = Field(description="additional metadata of the setting")
+    metadata: Dict[MetadataKey, Any] = Field(description="additional metadata of the setting")
 
 
 @router.get('/{name}', response_model=GetSettingOutput,
@@ -175,7 +175,7 @@ class GetSettingsOutputWithData_Setting(GetSettingsOutput_Setting):
                     " by")
     type: str = Field(description="the type of the setting")
     default_value: Any = Field(description="the default value of the setting")
-    metadata: Dict[str, Any] = Field(description="additional metadata of the setting")
+    metadata: Dict[MetadataKey, Any] = Field(description="additional metadata of the setting")
 
 
 class GetSettingsOutputWithData(ORJSONModel):
@@ -207,7 +207,7 @@ async def get_settings(include_additional_data: bool = False, app: HeksherApp = 
 
 
 class InputSettingMetadata(ORJSONModel):
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="user-defined metadata of the setting")
+    metadata: Dict[MetadataKey, Any] = Field(default_factory=dict, description="user-defined metadata of the setting")
 
 
 @router.post('/{name}/metadata', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
@@ -241,9 +241,10 @@ class PutSettingMetadataKey(ORJSONModel):
 
 
 @router.put('/{name}/metadata/{key}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
-async def update_setting_metadata_key(name: str, key: str, input: PutSettingMetadataKey, app: HeksherApp = application):
+async def update_setting_metadata_key(name: str, key: MetadataKey, input: PutSettingMetadataKey,
+                                      app: HeksherApp = application):
     """
-    Change the current metadata of the setting.
+    Updates the current metadata of the setting. Existing keys won't be deleted.
     """
     if not await app.db_logic.get_setting(name, include_metadata=False):
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
@@ -255,13 +256,24 @@ async def delete_setting_metadata(name: str, app: HeksherApp = application):
     """
     Delete a setting's metadata.
     """
-    deleted = await app.db_logic.delete_setting_metadata(name)
-    if not deleted:
-        return PlainTextResponse('setting name not found', status_code=status.HTTP_404_NOT_FOUND)
+    if not await app.db_logic.get_setting(name, include_metadata=False):
+        return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
+    await app.db_logic.delete_setting_metadata(name)
+
+
+@router.delete('/{name}/metadata/{key}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def delete_rule_key_from_metadata(name: str, key: MetadataKey, app: HeksherApp = application):
+    """
+    Delete a specific key from the setting's metadata.
+    """
+    if not await app.db_logic.get_setting(name, include_metadata=False):
+        return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
+    await app.db_logic.delete_setting_metadata_key(name, key)
 
 
 class GetSettingMetadataOutput(ORJSONModel):
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="user-defined metadata of the setting")
+    metadata: Optional[Dict[MetadataKey, Any]] = Field(default_factory=dict,
+                                                       description="user-defined metadata of the setting")
 
 
 @router.get('/{name}/metadata', response_model=GetSettingMetadataOutput,
@@ -274,10 +286,9 @@ async def get_setting_metadata(name: str, app: HeksherApp = application):
     """
     Get metadata of a setting.
     """
-    if not await app.db_logic.get_setting(name, include_metadata=False):
+    if not (setting := await app.db_logic.get_setting(name, include_metadata=True)):
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
-    metadata = await app.db_logic.get_setting_metadata(name)
-    return GetSettingMetadataOutput(metadata=metadata)
+    return GetSettingMetadataOutput(metadata=setting.metadata)
 
 
 v1_router.include_router(router)

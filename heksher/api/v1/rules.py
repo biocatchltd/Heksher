@@ -8,7 +8,7 @@ from starlette import status
 from starlette.responses import PlainTextResponse
 
 from heksher.api.v1.util import ORJSONModel, application, router as v1_router
-from heksher.api.v1.validation import ContextFeatureName, ContextFeatureValue, SettingName
+from heksher.api.v1.validation import ContextFeatureName, ContextFeatureValue, MetadataKey, SettingName
 from heksher.app import HeksherApp
 from heksher.setting import Setting
 
@@ -63,7 +63,7 @@ class AddRuleInput(ORJSONModel):
     feature_values: Dict[ContextFeatureName, ContextFeatureValue] = \
         Field(description="the exact-match conditions of the rule")
     value: Any = Field(description="the value of the setting in contexts that match the rule")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="additional metadata of the rule")
+    metadata: Dict[MetadataKey, Any] = Field(default_factory=dict, description="additional metadata of the rule")
 
     @validator('feature_values')
     @classmethod
@@ -194,7 +194,7 @@ class QueryRulesOutput(ORJSONModel):
 
 
 class QueryRulesOutputWithMetadata_Rule(QueryRulesOutput_Rule):
-    metadata: Dict[str, Any] = Field(description="the metadata of the rule, if requested")
+    metadata: Dict[MetadataKey, Any] = Field(description="the metadata of the rule, if requested")
 
 
 class QueryRulesOutputWithMetadata(ORJSONModel):
@@ -250,7 +250,7 @@ class GetRuleOutput(ORJSONModel):
     setting: str = Field(description="the setting the rule applies to")
     value: Any = Field(description="the value of the setting in contexts where the rule matches")
     feature_values: List[Tuple[str, str]] = Field(description="a list of exact-match conditions for the rule")
-    metadata: Dict[str, Any] = Field(description="the metadata of the rule")
+    metadata: Dict[MetadataKey, Any] = Field(description="the metadata of the rule")
 
 
 @router.get('/{rule_id}', response_model=GetRuleOutput)
@@ -265,7 +265,7 @@ async def get_rule(rule_id: int, app: HeksherApp = application):
 
 
 class InputRuleMetadata(ORJSONModel):
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="user-defined metadata of the rule")
+    metadata: Dict[MetadataKey, Any] = Field(default_factory=dict, description="user-defined metadata of the rule")
 
 
 @router.post('/{rule_id}/metadata', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
@@ -299,9 +299,10 @@ class PutRuleMetadataKey(ORJSONModel):
 
 
 @router.put('/{rule_id}/metadata/{key}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
-async def update_rule_metadata_key(rule_id: int, key: str, input: PutRuleMetadataKey, app: HeksherApp = application):
+async def update_rule_metadata_key(rule_id: int, key: MetadataKey, input: PutRuleMetadataKey,
+                                   app: HeksherApp = application):
     """
-    Change the current metadata of the rule.
+    Updates the current metadata of the rule. Existing keys won't be deleted.
     """
     if not await app.db_logic.get_rule(rule_id, include_metadata=False):
         return Response(status_code=status.HTTP_404_NOT_FOUND)
@@ -313,13 +314,24 @@ async def delete_rule_metadata(rule_id: int, app: HeksherApp = application):
     """
     Delete a rule's metadata.
     """
-    deleted = await app.db_logic.delete_rule_metadata(rule_id)
-    if not deleted:
+    if not await app.db_logic.get_rule(rule_id, include_metadata=False):
         return Response(status_code=status.HTTP_404_NOT_FOUND)
+    await app.db_logic.delete_rule_metadata(rule_id)
+
+
+@router.delete('/{rule_id}/metadata/{key}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def delete_rule_key_from_metadata(rule_id: int, key: MetadataKey, app: HeksherApp = application):
+    """
+    Delete a specific key from the rule's metadata.
+    """
+    if not await app.db_logic.get_rule(rule_id, include_metadata=False):
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
+    await app.db_logic.delete_rule_metadata_key(rule_id, key)
 
 
 class GetRuleMetadataOutput(ORJSONModel):
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="user-defined metadata of the rule")
+    metadata: Optional[Dict[MetadataKey, Any]] = Field(default_factory=dict,
+                                                       description="user-defined metadata of the rule")
 
 
 @router.get('/{rule_id}/metadata', response_model=GetRuleMetadataOutput,
@@ -332,10 +344,9 @@ async def get_rule_metadata(rule_id: int, app: HeksherApp = application):
     """
     Get metadata of a rule.
     """
-    if not await app.db_logic.get_rule(rule_id, include_metadata=False):
+    if not (rule := await app.db_logic.get_rule(rule_id, include_metadata=True)):
         return Response(status_code=status.HTTP_404_NOT_FOUND)
-    metadata = await app.db_logic.get_rule_metadata(rule_id)
-    return GetRuleMetadataOutput(metadata=metadata)
+    return GetRuleMetadataOutput(metadata=rule.metadata)
 
 
 v1_router.include_router(router)
