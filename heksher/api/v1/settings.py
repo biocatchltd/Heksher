@@ -8,8 +8,9 @@ from pydantic import Field, root_validator
 from starlette import status
 from starlette.responses import PlainTextResponse
 
+from heksher.api.v1.settings_metadata import router as metadata_router
 from heksher.api.v1.util import ORJSONModel, application, router as v1_router
-from heksher.api.v1.validation import ContextFeatureName, SettingName
+from heksher.api.v1.validation import ContextFeatureName, MetadataKey, SettingName
 from heksher.app import HeksherApp
 from heksher.setting import Setting
 from heksher.setting_types import SettingType
@@ -27,7 +28,7 @@ class DeclareSettingInput(ORJSONModel):
     type: SettingType = Field(description="the type of the setting")
     default_value: Any = Field(None, description="the default value of the rule, must be applicable to the setting's"
                                                  " value")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="user-defined metadata of the rule")
+    metadata: Dict[MetadataKey, Any] = Field(default_factory=dict, description="user-defined metadata of the setting")
 
     def to_setting(self) -> Setting:
         return Setting(self.name, self.type, self.default_value, self.configurable_features, self.metadata)
@@ -140,7 +141,7 @@ class GetSettingOutput(ORJSONModel):
                                                          " by")
     type: str = Field(description="the type of the setting")
     default_value: Any = Field(description="the default value of the setting")
-    metadata: Dict[str, Any] = Field(description="additional metadata of the setting")
+    metadata: Dict[MetadataKey, Any] = Field(description="additional metadata of the setting")
 
 
 @router.get('/{name}', response_model=GetSettingOutput,
@@ -175,7 +176,7 @@ class GetSettingsOutputWithData_Setting(GetSettingsOutput_Setting):
                     " by")
     type: str = Field(description="the type of the setting")
     default_value: Any = Field(description="the default value of the setting")
-    metadata: Dict[str, Any] = Field(description="additional metadata of the setting")
+    metadata: Dict[MetadataKey, Any] = Field(description="additional metadata of the setting")
 
 
 class GetSettingsOutputWithData(ORJSONModel):
@@ -205,5 +206,5 @@ async def get_settings(include_additional_data: bool = False, app: HeksherApp = 
             ) for spec in results
         ])
 
-
+router.include_router(metadata_router)
 v1_router.include_router(router)

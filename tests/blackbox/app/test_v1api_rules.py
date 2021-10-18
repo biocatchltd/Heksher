@@ -5,22 +5,6 @@ from itertools import chain
 from pytest import fixture, mark
 
 
-@fixture
-async def example_rule(size_limit_setting, app_client):
-    res = await app_client.post('/api/v1/rules', data=json.dumps({
-        'setting': 'size_limit',
-        'feature_values': {'theme': 'bright'},
-        'value': 10,
-        'metadata': {'test': True}
-    }))
-    res.raise_for_status()
-    j_result = res.json()
-    rule_id = j_result.pop('rule_id')
-    assert not j_result
-
-    return rule_id
-
-
 @mark.asyncio
 async def test_add_rule(example_rule, app_client):
     res = await app_client.get(f'/api/v1/rules/{example_rule}')

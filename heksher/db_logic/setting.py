@@ -35,7 +35,7 @@ class SettingMixin(DBLogicBase):
             results = (await conn.execute(
                 names_table.select()
                 .where(not_(settings.select().where(settings.c.name == names_table.c.n).exists())))
-            ).scalars().all()
+                       ).scalars().all()
 
         return results
 
@@ -43,7 +43,7 @@ class SettingMixin(DBLogicBase):
         """
         Args:
             name: The name of a setting
-
+            include_metadata: whether to include setting metadata
         Returns:
             The setting object for the setting in the DB with the same name, or None if it does not exist
 
@@ -52,7 +52,7 @@ class SettingMixin(DBLogicBase):
             data_row = (await conn.execute(
                 select([settings.c.type, settings.c.default_value])
                 .where(settings.c.name == name))
-            ).mappings().first()
+                        ).mappings().first()
 
             if data_row is None:
                 return None
@@ -63,7 +63,7 @@ class SettingMixin(DBLogicBase):
                                   configurable.c.context_feature == context_features.c.name))
                 .where(configurable.c.setting == name)
                 .order_by(context_features.c.index))
-            ).scalars().all()
+                                 ).scalars().all()
 
             if include_metadata:
                 metadata_ = dict((await conn.execute(
@@ -118,6 +118,7 @@ class SettingMixin(DBLogicBase):
             name: The name of the setting to edit
             changed: The fields of the setting to change
             new_contexts: An iterable of new context names to assign to the setting as configurable
+            new_metadata: Optional, new metadata to assign to the setting
         """
         async with self.db_engine.begin() as conn:
             if changed:

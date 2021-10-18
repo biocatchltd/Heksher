@@ -7,8 +7,9 @@ from pydantic import Field, validator
 from starlette import status
 from starlette.responses import PlainTextResponse
 
+from heksher.api.v1.rules_metadata import router as metadata_router
 from heksher.api.v1.util import ORJSONModel, application, router as v1_router
-from heksher.api.v1.validation import ContextFeatureName, ContextFeatureValue, SettingName
+from heksher.api.v1.validation import ContextFeatureName, ContextFeatureValue, MetadataKey, SettingName
 from heksher.app import HeksherApp
 from heksher.setting import Setting
 
@@ -63,7 +64,7 @@ class AddRuleInput(ORJSONModel):
     feature_values: Dict[ContextFeatureName, ContextFeatureValue] = \
         Field(description="the exact-match conditions of the rule")
     value: Any = Field(description="the value of the setting in contexts that match the rule")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="additional metadata of the rule")
+    metadata: Dict[MetadataKey, Any] = Field(default_factory=dict, description="additional metadata of the rule")
 
     @validator('feature_values')
     @classmethod
@@ -194,7 +195,7 @@ class QueryRulesOutput(ORJSONModel):
 
 
 class QueryRulesOutputWithMetadata_Rule(QueryRulesOutput_Rule):
-    metadata: Dict[str, Any] = Field(description="the metadata of the rule, if requested")
+    metadata: Dict[MetadataKey, Any] = Field(description="the metadata of the rule, if requested")
 
 
 class QueryRulesOutputWithMetadata(ORJSONModel):
@@ -250,7 +251,7 @@ class GetRuleOutput(ORJSONModel):
     setting: str = Field(description="the setting the rule applies to")
     value: Any = Field(description="the value of the setting in contexts where the rule matches")
     feature_values: List[Tuple[str, str]] = Field(description="a list of exact-match conditions for the rule")
-    metadata: Dict[str, Any] = Field(description="the metadata of the rule")
+    metadata: Dict[MetadataKey, Any] = Field(description="the metadata of the rule")
 
 
 @router.get('/{rule_id}', response_model=GetRuleOutput)
@@ -264,4 +265,5 @@ async def get_rule(rule_id: int, app: HeksherApp = application):
                          feature_values=rule_spec.feature_values, metadata=rule_spec.metadata)
 
 
+router.include_router(metadata_router)
 v1_router.include_router(router)
