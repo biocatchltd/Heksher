@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from typing import Any, Dict
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_
 from sqlalchemy.dialects.postgresql import insert
 
 from heksher.db_logic.logic_base import DBLogicBase
@@ -19,17 +17,11 @@ class RuleMetadataMixin(DBLogicBase):
             metadata: the metadata to update.
         """
         async with self.db_engine.begin() as conn:
-            # first, delete the keys that already exists in the table
-            await conn.execute(rule_metadata.delete()
-                               .where(and_(rule_metadata.c.rule == rule_id,
-                                           or_(rule_metadata.c.key == key for key in metadata.keys())))
-                               )
-            # after this, we can insert the new metadata
-            await conn.execute(
-                rule_metadata.insert().values(
-                    [{'rule': rule_id, 'key': k, 'value': v} for (k, v) in metadata.items()]
-                )
+            stmt = insert(rule_metadata).values(
+                [{'rule': rule_id, 'key': k, 'value': v} for (k, v) in metadata.items()]
             )
+            await conn.execute(stmt.on_conflict_do_update(index_elements=[rule_metadata.c.rule, rule_metadata.c.key],
+                                                          set_={"value": stmt.excluded.value}))
 
     async def replace_rule_metadata(self, rule_id: int, new_metadata: Dict[str, Any]):
         """

@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_
 from sqlalchemy.dialects.postgresql import insert
 
 from heksher.db_logic.logic_base import DBLogicBase
@@ -18,17 +18,12 @@ class SettingMetadataMixin(DBLogicBase):
             metadata: the metadata to update.
         """
         async with self.db_engine.begin() as conn:
-            # first, delete the keys that already exists in the table
-            await conn.execute(setting_metadata.delete()
-                               .where(and_(setting_metadata.c.setting == name,
-                                           or_(setting_metadata.c.key == key for key in metadata.keys())))
-                               )
-            # after this, we can insert the new metadata
-            await conn.execute(
-                setting_metadata.insert().values(
-                    [{'setting': name, 'key': k, 'value': v} for (k, v) in metadata.items()]
-                )
+            stmt = insert(setting_metadata).values(
+                [{'setting': name, 'key': k, 'value': v} for (k, v) in metadata.items()]
             )
+            await conn.execute(stmt.on_conflict_do_update(index_elements=[setting_metadata.c.setting,
+                                                                          setting_metadata.c.key],
+                                                          set_={"value": stmt.excluded.value}))
 
     async def replace_setting_metadata(self, name: str, new_metadata: Dict[str, Any]):
         """
