@@ -170,15 +170,15 @@ def mk_rule(app_client):
 @fixture
 async def setup_rules(mk_setting, mk_rule):
     await mk_setting('a')
+    await mk_setting('long_setting_name')
     await mk_setting('b')
-    await mk_setting('c')
 
     await mk_rule('a', {'trust': 'full'}, 1)
     await mk_rule('a', {'theme': 'black'}, 2)
     await mk_rule('a', {'theme': 'black', 'trust': 'full'}, 3)
-    await mk_rule('b', {'trust': 'none'}, 4)
-    await mk_rule('b', {'trust': 'part'}, 5)
-    await mk_rule('c', {'trust': 'full'}, 6)
+    await mk_rule('long_setting_name', {'trust': 'none'}, 4)
+    await mk_rule('long_setting_name', {'trust': 'part'}, 5)
+    await mk_rule('b', {'trust': 'full'}, 6)
     await mk_rule('a', {'theme': 'black', 'user': 'admin'}, 7)
 
 
@@ -186,7 +186,7 @@ async def setup_rules(mk_setting, mk_rule):
 @mark.parametrize('metadata', [False, True])
 async def test_query_rules(metadata: bool, app_client, setup_rules):
     res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
+        'setting_names': ['a', 'long_setting_name'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata
     }))
@@ -198,7 +198,7 @@ async def test_query_rules(metadata: bool, app_client, setup_rules):
                 {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
                 {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3, 'rule_id': 3}
             ],
-            'b': [
+            'long_setting_name': [
                 {'context_features': [['trust', 'part']], 'value': 5, 'rule_id': 5}
             ]
         }
@@ -218,7 +218,7 @@ async def test_query_rules_time_cache(metadata: bool, app_client, setup_rules, m
     await mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
 
     res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
+        'setting_names': ['a', 'long_setting_name'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata,
         'cache_time': current_time.isoformat(),
@@ -249,7 +249,7 @@ async def test_query_rules_bad_cache_time_zone(metadata: bool, suffix: str, app_
     await mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
 
     res = await app_client.get('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
+        'setting_names': ['a', 'long_setting_name'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata,
         'cache_time': current_time.isoformat() + suffix,
@@ -263,7 +263,7 @@ async def test_query_rules_fully_cached(metadata: bool, app_client, setup_rules,
     current_time = datetime.utcnow()
 
     res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
+        'setting_names': ['a', 'long_setting_name'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata,
         'cache_time': current_time.isoformat(),
@@ -281,14 +281,14 @@ async def test_query_rules_fully_cached(metadata: bool, app_client, setup_rules,
 async def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, sql_service):
     with sql_service.connection() as connection:
         connection.execute("""
-        INSERT INTO rules (setting, value) VALUES ('b', '10')
+        INSERT INTO rules (setting, value) VALUES ('long_setting_name', '10')
         """)
         connection.execute("""
         INSERT INTO rule_metadata (rule, key, value) VALUES (8, 'test', '"yes"')
         """)
 
     res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
+        'setting_names': ['a', 'long_setting_name'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata
     }))
@@ -300,7 +300,7 @@ async def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, s
                 {'context_features': [['theme', 'black']], 'rule_id': 2, 'value': 2},
                 {'context_features': [['trust', 'full'], ['theme', 'black']], 'rule_id': 3, 'value': 3}
             ],
-            'b': [
+            'long_setting_name': [
                 {'context_features': [['trust', 'part']], 'rule_id': 5, 'value': 5},
                 {'context_features': [], 'rule_id': 8, 'value': 10}
             ]
@@ -336,14 +336,14 @@ async def test_query_rules_nooptions(metadata: bool, app_client, setup_rules):
 async def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, setup_rules, sql_service):
     with sql_service.connection() as connection:
         connection.execute("""
-        INSERT INTO rules (setting, value) VALUES ('b', '10')
+        INSERT INTO rules (setting, value) VALUES ('long_setting_name', '10')
         """)
         connection.execute("""
         INSERT INTO rule_metadata (rule, key, value) VALUES (8, 'test', '"yes"')
         """)
 
     res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
+        'setting_names': ['a', 'long_setting_name'],
         'context_features_options': {},
         'include_metadata': metadata
     }))
@@ -351,7 +351,7 @@ async def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, s
     expected = {
         'rules': {
             'a': [],
-            'b': [
+            'long_setting_name': [
                 {'context_features': [], 'value': 10, 'rule_id': 8},
             ]
         }
@@ -368,7 +368,7 @@ async def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, s
 @mark.parametrize('metadata', [False, True])
 async def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
     res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
+        'setting_names': ['a', 'long_setting_name'],
         'context_features_options': '*',
         'include_metadata': metadata
     }))
@@ -381,7 +381,7 @@ async def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
                 {'context_features': [['trust', 'full'], ['theme', 'black']], 'rule_id': 3, 'value': 3},
                 {'context_features': [['user', 'admin'], ['theme', 'black']], 'rule_id': 7, 'value': 7}
             ],
-            'b': [
+            'long_setting_name': [
                 {'context_features': [['trust', 'none']], 'rule_id': 4, 'value': 4},
                 {'context_features': [['trust', 'part']], 'rule_id': 5, 'value': 5}
             ]
@@ -398,7 +398,7 @@ async def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
 @mark.parametrize('metadata', [False, True])
 async def test_query_rules_wildcard_some(metadata: bool, app_client, setup_rules):
     res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
+        'setting_names': ['a', 'long_setting_name'],
         'context_features_options': {'theme': '*', 'trust': ['full', 'none']},
         'include_metadata': metadata
     }))
@@ -410,7 +410,7 @@ async def test_query_rules_wildcard_some(metadata: bool, app_client, setup_rules
                 {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
                 {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3, 'rule_id': 3},
             ],
-            'b': [
+            'long_setting_name': [
                 {'context_features': [['trust', 'none']], 'value': 4, 'rule_id': 4},
             ]
         }
@@ -426,7 +426,7 @@ async def test_query_rules_wildcard_some(metadata: bool, app_client, setup_rules
 @mark.parametrize('metadata', [False, True])
 async def test_query_rules_wildcard_only(metadata: bool, app_client, setup_rules):
     res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
+        'setting_names': ['a', 'long_setting_name'],
         'context_features_options': {'theme': '*'},
         'include_metadata': metadata
     }))
@@ -436,7 +436,7 @@ async def test_query_rules_wildcard_only(metadata: bool, app_client, setup_rules
             'a': [
                 {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
             ],
-            'b': []
+            'long_setting_name': []
         }
     }
     if metadata:
@@ -449,7 +449,7 @@ async def test_query_rules_wildcard_only(metadata: bool, app_client, setup_rules
 @mark.asyncio
 async def test_query_rules_bad_contexts(app_client, setup_rules):
     res = await app_client.get('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
+        'setting_names': ['a', 'long_setting_name'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black'], 'love': ['overflowing']},
     }))
     assert 400 <= res.status_code <= 499
@@ -458,7 +458,7 @@ async def test_query_rules_bad_contexts(app_client, setup_rules):
 @mark.asyncio
 async def test_query_rules_empty_contexts(app_client, setup_rules):
     res = await app_client.get('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
+        'setting_names': ['a', 'long_setting_name'],
         'context_features_options': {'trust': []}
     }))
     assert 400 <= res.status_code <= 499
@@ -515,7 +515,7 @@ async def test_query_rules_bad_cache_future(metadata: bool, app_client, setup_ru
     await mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
 
     res = await app_client.get('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'b'],
+        'setting_names': ['a', 'long_setting_name'],
         'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
         'include_metadata': metadata,
         'cache_time': future_time.isoformat(),
