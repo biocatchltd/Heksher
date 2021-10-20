@@ -30,7 +30,7 @@ class SettingMixin(DBLogicBase):
             A collection of names that have no settings with that name.
 
         """
-        names_table = values(column('n', String), name='names').data(names)
+        names_table = values(column('n', String), name='names').data([(name,) for name in names])
         async with self.db_engine.connect() as conn:
             results = (await conn.execute(
                 names_table.select()
