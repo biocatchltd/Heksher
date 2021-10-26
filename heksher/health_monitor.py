@@ -11,28 +11,29 @@ _logger = getLogger(__name__)
 
 
 class HealthMonitor:
+    """
+    Checks the connection to PostgreSQL periodically, sending logs whenever connection failed
+    """
 
-    status: Optional[bool]
-    _engine: Optional[AsyncEngine]
+    status: bool
+    _engine: AsyncEngine
     _monitor_task: Optional[Task] = None
 
-    async def _psql_health_callback(self) -> bool:
+    async def _psql_health_callback(self) -> None:
         async with self._engine.connect() as conn:
             db_version = await conn.execute(text('''SHOW SERVER_VERSION'''))
             db_version = db_version.scalar_one_or_none()
-        if db_version:
-            return True
-        return False
+        if db_version is None:
+            raise ValueError("expected version, got None")
 
     async def _check(self) -> bool:
         try:
-            return await self._psql_health_callback()
+            await self._psql_health_callback()
+            _logger.debug("PostgreSQL is healthy")
+            return True
         except Exception:
-            _logger.exception("PostgreSQL is in failed health")
+            _logger.exception("PostgreSQL health check failed")
             return False
-
-    async def _set_status(self) -> None:
-        self.status = await self._check()
 
     async def start(self, engine: AsyncEngine, interval: float = 5.0) -> None:
         """
@@ -48,10 +49,10 @@ class HealthMonitor:
 
         async def loop_task() -> None:
             while True:
-                await self._set_status()
+                self.status = await self._check()
                 await sleep(interval)
 
-        await self._set_status()
+        self.status = await self._check()
         self._monitor_task = create_task(loop_task())
 
     async def stop(self) -> None:
