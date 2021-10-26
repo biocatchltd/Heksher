@@ -6,7 +6,7 @@ import orjson
 from fastapi import APIRouter, Response
 from pydantic import Field, root_validator
 from starlette import status
-from starlette.responses import PlainTextResponse
+from starlette.responses import JSONResponse, PlainTextResponse
 
 from heksher.api.v1.settings_metadata import router as metadata_router
 from heksher.api.v1.util import ORJSONModel, application, router as v1_router
@@ -205,6 +205,49 @@ async def get_settings(include_additional_data: bool = False, app: HeksherApp = 
                 name=spec.name
             ) for spec in results
         ])
+
+
+class PutSettingTypeInput(ORJSONModel):
+    type: SettingType = Field(description='the new setting type to set')
+
+
+class PutSettingTypeConflictOutput(ORJSONModel):
+    conflicts: List[str] = Field(description='a list of conflicts to changing the rule value')
+
+
+@router.put('/{name}/type', status_code=status.HTTP_204_NO_CONTENT, response_class=Response,
+            responses={
+                status.HTTP_409_CONFLICT: {
+                    "description": "The new type is incompatible with a rule of the setting, or with the setting's "
+                                   "default value.",
+                    "model": PutSettingTypeConflictOutput
+                }
+            }
+            )
+async def set_setting_type(name: str, input: PutSettingTypeInput, app: HeksherApp = application):
+    """
+    Change The type of a setting
+    """
+    setting = await app.db_logic.get_setting(name, include_metadata=False)
+    if not setting:
+        return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
+    conflicts = []
+    new_type = input.type
+    if new_type == setting.type:
+        return None
+    if not new_type.validate(setting.default_value):
+        conflicts.append(f'the default value {setting.default_value!r} does not match the new type')
+    rules = await app.db_logic.get_rules_for_setting(name)
+    bad_rules = {rule_id: rule_value for (rule_id, rule_value) in rules if not new_type.validate(rule_value)}
+    if bad_rules:
+        conditions = await app.db_logic.get_rules_feature_values(list(bad_rules.keys()))
+        for rule_id, value in bad_rules.items():
+            conflicts.append(f'rule {rule_id} ({conditions[rule_id]}) has incompatible value {value}')
+    if conflicts:
+        return JSONResponse(PutSettingTypeConflictOutput(conflicts=conflicts).dict(),
+                            status_code=status.HTTP_409_CONFLICT)
+    await app.db_logic.set_setting_type(name, new_type)
+    return None
 
 router.include_router(metadata_router)
 v1_router.include_router(router)

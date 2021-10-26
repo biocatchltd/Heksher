@@ -5,6 +5,7 @@
 * Added schema information for setting types
 * Added POST, PATCH and DELETE API's to context_features, allowing run-time modifications
 * Added POST, PUT, GET and DELETE API's to edit metadata (setting and rule)
+* A route to explicitly change the type of a setting
 ### Changed
 * Heksher now uses sqlalchemy instead of databases
 * inline_sql method removed, uses sqlalchemy validation instead
@@ -12,6 +13,9 @@
 * metadata keys are restricted to alphanumeric characters, underscore and dash
 ### Fixed
 * removed yellowbox as a non-dev dependency
+* getting a specific rule would only return the first condition
+### Internal
+* Changed coverage checking to coverage
 ## 0.3.1
 ### Removed
 * removed alembic upgrade from the image's pre-start

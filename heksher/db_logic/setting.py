@@ -9,7 +9,7 @@ from sqlalchemy import String, column, join, not_, select, values
 from heksher.db_logic.logic_base import DBLogicBase
 from heksher.db_logic.metadata import configurable, context_features, setting_metadata, settings
 from heksher.setting import Setting
-from heksher.setting_types import setting_type
+from heksher.setting_types import SettingType, setting_type
 
 
 class SettingSpec(NamedTuple):
@@ -211,3 +211,13 @@ class SettingMixin(DBLogicBase):
                 configurables[row['name']] if full_data else None
             ) for row in records
         ]
+
+    async def set_setting_type(self, setting_name: str, new_type: SettingType):
+        """
+        Change the type of a setting. Does not check validity.
+        Args:
+            setting_name: the name of the setting
+            new_type: the new type of the setting
+        """
+        async with self.db_engine.begin() as conn:
+            await conn.execute(settings.update().where(settings.c.name == setting_name).values(type=str(new_type)))

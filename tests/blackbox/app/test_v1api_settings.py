@@ -1,6 +1,6 @@
 import json
 
-from pytest import mark
+from pytest import fixture, mark
 
 
 @mark.asyncio
@@ -291,3 +291,197 @@ async def test_get_settings_additional_data(app_client):
              'metadata': {}, 'default_value': None},
         ]
     }
+
+
+@fixture
+async def interval_setting(app_client):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+        'name': 'interval',
+        'configurable_features': ['user', 'theme'],
+        'type': 'float',
+        'default_value': 5,
+        'metadata': {'testing': True}
+    }))
+    res.raise_for_status()
+    assert res.json() == {
+        'created': True,
+        'changed': [],
+        'incomplete': {}
+    }
+
+
+@mark.asyncio
+@mark.parametrize('new_type', ['float', 'int'])
+async def test_type_downgrade_no_rules(interval_setting, app_client, new_type):
+    res = await app_client.put('/api/v1/settings/interval/type', json={
+        'type': new_type
+    })
+    assert res.status_code == 204
+    assert not res.content
+
+    res = await app_client.get('/api/v1/settings/interval')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == new_type
+    assert resp_json['default_value'] == 5
+
+
+@mark.asyncio
+async def test_type_downgrade_no_rules_default_conflict(interval_setting, app_client):
+    res = await app_client.put('/api/v1/settings/interval/type', json={
+        'type': 'bool'
+    })
+    assert res.status_code == 409
+    assert sum('default value' in reason for reason in res.json()['conflicts']) == 1
+
+    res = await app_client.get('/api/v1/settings/interval')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == 'float'
+    assert resp_json['default_value'] == 5
+
+
+@mark.asyncio
+async def test_type_downgrade_with_rules(interval_setting, app_client):
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
+        'setting': 'interval',
+        'feature_values': {'theme': 'bright', 'user': 'me'},
+        'value': 10,
+        'metadata': {'test': True}
+    }))
+    res.raise_for_status()
+
+    res = await app_client.put('/api/v1/settings/interval/type', json={
+        'type': 'int'
+    })
+    assert res.status_code == 204
+    assert not res.content
+
+    res = await app_client.get('/api/v1/settings/interval')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == 'int'
+    assert resp_json['default_value'] == 5
+
+
+@mark.asyncio
+async def test_declare_downgrade_with_rules_conflict(interval_setting, app_client):
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
+        'setting': 'interval',
+        'feature_values': {'theme': 'bright', 'user': 'me'},
+        'value': 10.6,
+        'metadata': {'test': True}
+    }))
+    res.raise_for_status()
+    j_result = res.json()
+    rule_id = j_result.pop('rule_id')
+
+    res = await app_client.put('/api/v1/settings/interval/type', json={
+        'type': 'int'
+    })
+    assert res.status_code == 409
+    assert sum(str(rule_id) in reason for reason in res.json()['conflicts']) == 1
+
+    res = await app_client.get('/api/v1/settings/interval')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == 'float'
+    assert resp_json['default_value'] == 5
+
+
+@mark.asyncio
+@mark.parametrize('new_type', ['float', 'int'])
+async def test_type_downgrade_missing(interval_setting, app_client, new_type):
+    res = await app_client.put('/api/v1/settings/intervalloo/type', json={
+        'type': new_type
+    })
+    assert res.status_code == 404
+
+
+@mark.asyncio
+async def test_type_downgrade_with_rules_enum(app_client):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+        'name': 'background_color',
+        'configurable_features': ['theme'],
+        'type': 'Enum["red", "blue", "green"]',
+        'default_value': "blue",
+        'metadata': {'testing': True}
+    }))
+    res.raise_for_status()
+    assert res.json() == {
+        'created': True,
+        'changed': [],
+        'incomplete': {}
+    }
+
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
+        'setting': 'background_color',
+        'feature_values': {'theme': 'bright'},
+        'value': "green",
+        'metadata': {'test': True}
+    }))
+    res.raise_for_status()
+
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
+        'setting': 'background_color',
+        'feature_values': {'theme': 'dark'},
+        'value': "blue",
+        'metadata': {'test': True}
+    }))
+    res.raise_for_status()
+
+    res = await app_client.put('/api/v1/settings/background_color/type', json={
+        'type': 'Enum["blue", "green", "yellow"]'
+    })
+    assert res.status_code == 204
+    assert not res.content
+
+    res = await app_client.get('/api/v1/settings/background_color')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == 'Enum["blue","green","yellow"]'
+    assert resp_json['default_value'] == "blue"
+
+
+@mark.asyncio
+async def test_type_downgrade_with_rules_enum_bad(app_client):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+        'name': 'background_color',
+        'configurable_features': ['theme'],
+        'type': 'Enum["red", "blue", "green"]',
+        'default_value': "blue",
+        'metadata': {'testing': True}
+    }))
+    res.raise_for_status()
+    assert res.json() == {
+        'created': True,
+        'changed': [],
+        'incomplete': {}
+    }
+
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
+        'setting': 'background_color',
+        'feature_values': {'theme': 'bright'},
+        'value': "green",
+        'metadata': {'test': True}
+    }))
+    res.raise_for_status()
+
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
+        'setting': 'background_color',
+        'feature_values': {'theme': 'dark'},
+        'value': "red",
+        'metadata': {'test': True}
+    }))
+    res.raise_for_status()
+
+    res = await app_client.put('/api/v1/settings/background_color/type', json={
+        'type': 'Enum["blue", "green", "yellow"]'
+    })
+    assert res.status_code == 409
+
+    res = await app_client.get('/api/v1/settings/background_color')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == 'Enum["blue","green","red"]'
+    assert resp_json['default_value'] == "blue"

@@ -1,2 +1,6 @@
 #!/bin/sh
-python -m pytest tests -s -x --cov=heksher --cov-report=xml --cov-report=term-missing
+set -e
+coverage run --branch --include="heksher/*" --concurrency=greenlet -m pytest tests -s -x
+coverage html
+coverage report -m
+coverage xml
