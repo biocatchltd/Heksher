@@ -218,12 +218,16 @@ class PutSettingTypeConflictOutput(ORJSONModel):
 @router.put('/{name}/type', status_code=status.HTTP_204_NO_CONTENT, response_class=Response,
             responses={
                 status.HTTP_409_CONFLICT: {
-                    "description": "The new type is incompatible with a rule of the setting.",
+                    "description": "The new type is incompatible with a rule of the setting, or with the setting's "
+                                   "default value.",
                     "model": PutSettingTypeConflictOutput
                 }
             }
             )
 async def set_setting_type(name: str, input: PutSettingTypeInput, app: HeksherApp = application):
+    """
+    Change The type of a setting
+    """
     setting = await app.db_logic.get_setting(name, include_metadata=False)
     if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
