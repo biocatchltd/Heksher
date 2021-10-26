@@ -75,6 +75,15 @@ class RuleMixin(DBLogicBase):
         )
 
     async def get_rules_feature_values(self, ids: List[int]) -> Mapping[int, Sequence[Tuple[str, str]]]:
+        """
+        Get all the context feature conditions of a list of rules
+        Args:
+            ids: the ids of the rules to get the conditions of
+
+        Returns:
+            A mapping of rule ids to a list of context features and their values, ordered by their indices
+
+        """
         async with self.db_engine.connect() as conn:
             feature_values = (await conn.execute(
                 select([conditions.c.rule, conditions.c.context_feature, conditions.c.feature_value])
@@ -318,6 +327,16 @@ class RuleMixin(DBLogicBase):
         return ret
 
     async def get_rules_for_setting(self, setting_name: str) -> Sequence[BareRuleSpec]:
+        """
+        Get all the rules for a particular setting
+
+        Args:
+            setting_name: the name of the setting to ge the rules from
+
+        Returns:
+            A sequence of rules for the setting
+
+        """
         async with self.db_engine.connect() as conn:
             result = ((await conn.execute(select([rules.c.id, rules.c.value]).where(rules.c.setting == setting_name)))
                       .all())
