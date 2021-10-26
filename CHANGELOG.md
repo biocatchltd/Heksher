@@ -12,6 +12,9 @@
 * metadata keys are restricted to alphanumeric characters, underscore and dash
 ### Fixed
 * removed yellowbox as a non-dev dependency
+* getting a specific rule would only return the first condition
+### Internal
+* Changed coverage checking to coverage
 ## 0.3.1
 ### Removed
 * removed alembic upgrade from the image's pre-start

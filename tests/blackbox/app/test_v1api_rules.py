@@ -18,6 +18,18 @@ async def test_add_rule(example_rule, app_client):
 
 
 @mark.asyncio
+async def test_add_rule_2(example_rule2, app_client):
+    res = await app_client.get(f'/api/v1/rules/{example_rule2}')
+    res.raise_for_status()
+    assert res.json() == {
+        'setting': 'size_limit',
+        'value': 10,
+        'feature_values': [['user', 'me'], ['theme', 'bright']],
+        'metadata': {'test': True}
+    }
+
+
+@mark.asyncio
 async def test_add_rule_no_conds(size_limit_setting, app_client):
     res = await app_client.post('/api/v1/rules', data=json.dumps({
         'setting': 'size_limit',

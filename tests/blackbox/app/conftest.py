@@ -87,6 +87,22 @@ async def example_rule(size_limit_setting, app_client):
     return rule_id
 
 
+@fixture
+async def example_rule2(size_limit_setting, app_client):
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
+        'setting': 'size_limit',
+        'feature_values': {'theme': 'bright', 'user': 'me'},
+        'value': 10,
+        'metadata': {'test': True}
+    }))
+    res.raise_for_status()
+    j_result = res.json()
+    rule_id = j_result.pop('rule_id')
+    assert not j_result
+
+    return rule_id
+
+
 @fixture(scope='session')
 def event_loop(request):
     loop = asyncio.get_event_loop_policy().new_event_loop()

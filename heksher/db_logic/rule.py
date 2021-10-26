@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from itertools import groupby
 from operator import itemgetter
-from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, NamedTuple, Optional, Sequence, Tuple
 
 import orjson
 from sqlalchemy import and_, func, join, not_, select, tuple_
@@ -29,6 +29,11 @@ class InnerRuleSpec(NamedTuple):
     rule_id: int
 
 
+class BareRuleSpec(NamedTuple):
+    rule_id: int
+    value: Any
+
+
 class RuleMixin(DBLogicBase):
     async def get_rule(self, id_: int, include_metadata: bool) -> Optional[RuleSpec]:
         """
@@ -52,8 +57,7 @@ class RuleMixin(DBLogicBase):
                                   conditions.c.context_feature == context_features.c.name))
                 .where(conditions.c.rule == id_)
                 .order_by(context_features.c.index)
-                .limit(1))
-                              ).mappings().all()
+            )).mappings().all()
             if include_metadata:
                 metadata_ = dict((await conn.execute(
                     select([rule_metadata.c.key, rule_metadata.c.value])
@@ -69,6 +73,20 @@ class RuleMixin(DBLogicBase):
             [(f['context_feature'], f['feature_value']) for f in feature_values],
             metadata_
         )
+
+    async def get_rules_feature_values(self, ids: List[int]) -> Mapping[int, Sequence[Tuple[str, str]]]:
+        async with self.db_engine.connect() as conn:
+            feature_values = (await conn.execute(
+                select([conditions.c.rule, conditions.c.context_feature, conditions.c.feature_value])
+                .select_from(join(conditions, context_features,
+                                  conditions.c.context_feature == context_features.c.name))
+                .where(conditions.c.rule.in_(ids))
+                .order_by(context_features.c.index))).all()
+
+        ret: Dict[int, List[Tuple[str, str]]] = {k: [] for k in ids}
+        for rule_id, feature, value in feature_values:
+            ret[rule_id].append((feature, value))
+        return ret
 
     async def get_rule_id(self, setting: str, match_conditions: Dict[str, str]) -> Optional[int]:
         """
@@ -243,7 +261,7 @@ class RuleMixin(DBLogicBase):
                          ))
                           .exists())
                      )
-                    )
+            )
                      .order_by(rules.c.id, context_features.c.index))
 
             async with self.db_engine.connect() as conn:
@@ -298,3 +316,9 @@ class RuleMixin(DBLogicBase):
         for setting in missing_settings:
             ret[setting] = []
         return ret
+
+    async def get_rules_for_setting(self, setting_name: str) -> Sequence[BareRuleSpec]:
+        async with self.db_engine.connect() as conn:
+            result = ((await conn.execute(select([rules.c.id, rules.c.value]).where(rules.c.setting == setting_name)))
+                      .all())
+        return [BareRuleSpec(id_, orjson.loads(v)) for id_, v in result]
