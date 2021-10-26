@@ -26,12 +26,10 @@ class HealthMonitor:
 
     async def _check(self) -> bool:
         try:
-            ret: bool = await self._psql_health_callback()
+            return await self._psql_health_callback()
         except Exception:
             _logger.exception("PostgreSQL is in failed health")
             return False
-        else:
-            return ret
 
     async def _set_status(self) -> None:
         self.status = await self._check()
