@@ -39,7 +39,7 @@ class HeksherApp(FastAPI):
     """
     engine: AsyncEngine
     db_logic: DBLogic
-    health_monitor = HealthMonitor(extra={'version': __version__})
+    health_monitor = HealthMonitor()
 
     async def startup(self):
         logstash_settings = logstash_settings_ev.get()
