@@ -1,5 +1,3 @@
-from starlette.responses import JSONResponse
-
 from heksher._version import __version__
 from heksher.api.v1 import router as v1_router
 from heksher.app import HeksherApp
@@ -18,16 +16,7 @@ async def startup():
 async def shutdown():
     await app.shutdown()
 
-
-@app.get('/api/health')
-async def health_check():
-    """
-    Check the health of the connections to the service
-    """
-    is_healthy = await app.is_healthy()
-    if not is_healthy:
-        return JSONResponse({'version': __version__}, status_code=500)
-    return {'version': __version__}
+app.health_monitor.add_fastapi_route(app)
 
 
 def main():
