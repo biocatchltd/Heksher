@@ -21,8 +21,7 @@ class HealthMonitor:
 
     async def _psql_health_callback(self) -> None:
         async with self._engine.connect() as conn:
-            db_version = await conn.execute(text('''SHOW SERVER_VERSION'''))
-            db_version = db_version.scalar_one_or_none()
+            db_version = (await conn.execute(text('''SHOW SERVER_VERSION'''))).scalar_one_or_none()
         if db_version is None:
             raise ValueError("expected version, got None")
 
