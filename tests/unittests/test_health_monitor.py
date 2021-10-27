@@ -7,8 +7,7 @@ from heksher.health_monitor import HealthMonitor
 
 @fixture
 def monitor(mock_engine) -> HealthMonitor:
-    monitor = HealthMonitor()
-    monitor._engine = mock_engine
+    monitor = HealthMonitor(mock_engine)
     return monitor
 
 

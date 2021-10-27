@@ -19,6 +19,9 @@ class HealthMonitor:
     _engine: AsyncEngine
     _monitor_task: Optional[Task] = None
 
+    def __init__(self, engine: AsyncEngine):
+        self._engine = engine
+
     async def _psql_health_callback(self) -> None:
         async with self._engine.connect() as conn:
             db_version = (await conn.execute(text('''SHOW SERVER_VERSION'''))).scalar_one_or_none()
@@ -28,23 +31,20 @@ class HealthMonitor:
     async def _check(self) -> bool:
         try:
             await self._psql_health_callback()
-            _logger.debug("PostgreSQL is healthy")
-            return True
         except Exception:
             _logger.exception("PostgreSQL health check failed")
             return False
+        _logger.debug("Heksher is healthy")
+        return True
 
-    async def start(self, engine: AsyncEngine, interval: float = 5.0) -> None:
+    async def start(self, interval: float = 5.0) -> None:
         """
         Create a monitor task that runs every interval seconds.
         Args:
-            engine: async engine of postgresql
             interval: The interval between runs.
         """
         if self._monitor_task:
             raise RuntimeError('monitor task already running')
-
-        self._engine = engine
 
         async def loop_task() -> None:
             while True:

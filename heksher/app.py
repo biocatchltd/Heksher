@@ -39,7 +39,7 @@ class HeksherApp(FastAPI):
     """
     engine: AsyncEngine
     db_logic: DBLogic
-    health_monitor = HealthMonitor()
+    health_monitor: HealthMonitor
 
     async def startup(self):
         logstash_settings = logstash_settings_ev.get()
@@ -63,7 +63,8 @@ class HeksherApp(FastAPI):
         expected_context_features = startup_context_features.get()
         await self.db_logic.ensure_context_features(expected_context_features)
 
-        await self.health_monitor.start(self.engine)
+        self.health_monitor = HealthMonitor(self.engine)
+        await self.health_monitor.start()
 
         sentry_dsn = sentry_dsn_ev.get()
         if sentry_dsn:
