@@ -24,8 +24,7 @@ async def health_check():
     """
     Check the health of the connections to the service
     """
-    is_healthy = await app.is_healthy()
-    if not is_healthy:
+    if not app.health_monitor.status:
         return JSONResponse({'version': __version__}, status_code=500)
     return {'version': __version__}
 

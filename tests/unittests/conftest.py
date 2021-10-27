@@ -1,7 +1,8 @@
+import asyncio
 from unittest.mock import AsyncMock
 
+from async_asgi_testclient import TestClient
 from pytest import fixture
-from starlette.testclient import TestClient
 
 import heksher.app as app_mod
 from heksher.db_logic import DBLogic
@@ -43,12 +44,19 @@ def mock_engine():
 
 
 @fixture
-def app_client(monkeypatch, mock_engine):
+async def app_client(monkeypatch, mock_engine):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', 'postgresql://dbuser:swordfish@pghost10/')
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', '["A","B","C"]')
 
     monkeypatch.setattr(app_mod, 'create_async_engine', mock_engine)
     monkeypatch.setattr(app_mod, 'DBLogic', lambda *a: AsyncMock(DBLogic))
 
-    with TestClient(app) as app_client:
+    async with TestClient(app) as app_client:
         yield app_client
+
+
+@fixture(scope='session')
+def event_loop(request):
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()

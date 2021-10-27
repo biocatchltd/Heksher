@@ -11,6 +11,7 @@
 * inline_sql method removed, uses sqlalchemy validation instead
 * metadata is now stored in seperate tables
 * metadata keys are restricted to alphanumeric characters, underscore and dash
+* better health checks - ping and cache periodically 
 ### Fixed
 * removed yellowbox as a non-dev dependency
 * getting a specific rule would only return the first condition

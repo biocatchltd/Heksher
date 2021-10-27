@@ -8,11 +8,11 @@ from aiologstash import create_tcp_handler
 from envolved import EnvVar, Schema
 from envolved.parsers import CollectionParser
 from fastapi import FastAPI
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from heksher._version import __version__
 from heksher.db_logic import DBLogic
+from heksher.health_monitor import HealthMonitor
 from heksher.util import db_url_with_async_driver
 
 logger = getLogger(__name__)
@@ -39,6 +39,7 @@ class HeksherApp(FastAPI):
     """
     engine: AsyncEngine
     db_logic: DBLogic
+    health_monitor: HealthMonitor
 
     async def startup(self):
         logstash_settings = logstash_settings_ev.get()
@@ -62,6 +63,9 @@ class HeksherApp(FastAPI):
         expected_context_features = startup_context_features.get()
         await self.db_logic.ensure_context_features(expected_context_features)
 
+        self.health_monitor = HealthMonitor(self.engine)
+        await self.health_monitor.start()
+
         sentry_dsn = sentry_dsn_ev.get()
         if sentry_dsn:
             try:
@@ -70,13 +74,5 @@ class HeksherApp(FastAPI):
                 logger.exception("cannot start sentry")
 
     async def shutdown(self):
+        await self.health_monitor.stop()
         await wait_for(self.engine.dispose(), timeout=10)
-
-    async def is_healthy(self):
-        try:
-            async with self.engine.connect() as conn:
-                db_version = (await conn.execute(text('''SHOW SERVER_VERSION'''))).scalar_one_or_none()
-        except Exception:
-            db_version = None
-
-        return bool(db_version)
