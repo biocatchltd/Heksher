@@ -47,3 +47,9 @@ rule_metadata = Table('rule_metadata', metadata,
                       Column('value', JSONB, nullable=False),
                       UniqueConstraint('rule', 'key'),
                       )
+
+setting_aliases = Table('setting_aliases', metadata,
+                        Column('setting', ForeignKey(settings.columns.name, ondelete="CASCADE"), index=True),
+                        Column('alias', String, nullable=False),
+                        UniqueConstraint('setting', 'alias'),
+                        )

@@ -25,9 +25,10 @@ async def update_setting_metadata(name: str, input: InputSettingMetadata, app: H
     """
     if not input.metadata:
         return None
-    if not await app.db_logic.get_setting(name, include_metadata=False):
+    setting = await app.db_logic.get_setting(name, include_metadata=False)
+    if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
-    await app.db_logic.update_setting_metadata(name, input.metadata)
+    await app.db_logic.update_setting_metadata(setting.name, input.metadata)
 
 
 @router.put('/{name}/metadata', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
@@ -35,13 +36,14 @@ async def replace_setting_metadata(name: str, input: InputSettingMetadata, app: 
     """
     Change the current metadata of the setting.
     """
-    if not await app.db_logic.get_setting(name, include_metadata=False):
+    setting = await app.db_logic.get_setting(name, include_metadata=False)
+    if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
     if not input.metadata:
         # empty dictionary equals to deleting the metadata
-        await app.db_logic.delete_setting_metadata(name)
+        await app.db_logic.delete_setting_metadata(setting.name)
     else:
-        await app.db_logic.replace_setting_metadata(name, input.metadata)
+        await app.db_logic.replace_setting_metadata(setting.name, input.metadata)
 
 
 class PutSettingMetadataKey(ORJSONModel):
@@ -54,9 +56,10 @@ async def update_setting_metadata_key(name: str, key: MetadataKey, input: PutSet
     """
     Updates the current metadata of the setting. Existing keys won't be deleted.
     """
-    if not await app.db_logic.get_setting(name, include_metadata=False):
+    setting = await app.db_logic.get_setting(name, include_metadata=False)
+    if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
-    await app.db_logic.update_setting_metadata_key(name, key, input.value)
+    await app.db_logic.update_setting_metadata_key(setting.name, key, input.value)
 
 
 @router.delete('/{name}/metadata', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
@@ -64,9 +67,10 @@ async def delete_setting_metadata(name: str, app: HeksherApp = application):
     """
     Delete a setting's metadata.
     """
-    if not await app.db_logic.get_setting(name, include_metadata=False):
+    setting = await app.db_logic.get_setting(name, include_metadata=False)
+    if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
-    await app.db_logic.delete_setting_metadata(name)
+    await app.db_logic.delete_setting_metadata(setting.name)
 
 
 @router.delete('/{name}/metadata/{key}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
@@ -74,9 +78,10 @@ async def delete_rule_key_from_metadata(name: str, key: MetadataKey, app: Hekshe
     """
     Delete a specific key from the setting's metadata.
     """
-    if not await app.db_logic.get_setting(name, include_metadata=False):
+    setting = await app.db_logic.get_setting(name, include_metadata=False)
+    if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
-    await app.db_logic.delete_setting_metadata_key(name, key)
+    await app.db_logic.delete_setting_metadata_key(setting.name, key)
 
 
 class GetSettingMetadataOutput(ORJSONModel):
