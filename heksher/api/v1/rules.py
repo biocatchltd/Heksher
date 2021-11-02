@@ -219,7 +219,7 @@ async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
                                      status_code=status.HTTP_404_NOT_FOUND)
 
     if input.setting_names:
-        names = await app.db_logic.get_setting_names(input.setting_names)
+        names = await app.db_logic.get_canonical_names(input.setting_names)
         not_settings = [k for k, v in names.items() if not v]
         if not_settings:
             return PlainTextResponse(f'the following are not setting names: {not_settings}',

@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional
 
 import orjson
 from _operator import itemgetter
-from sqlalchemy import String, column, join, select, values, or_
+from sqlalchemy import String, column, join, select, values, or_, delete
 from sqlalchemy.dialects.postgresql import insert
 
 from heksher.db_logic.logic_base import DBLogicBase
@@ -23,14 +23,14 @@ class SettingSpec(NamedTuple):
 
 
 class SettingMixin(DBLogicBase):
-    async def get_setting_names(self, names_or_aliases: Iterable[str]) -> Dict[str, str]:
+    async def get_canonical_names(self, names_or_aliases: Iterable[str]) -> Dict[str, str]:
         """
         Args:
             names_or_aliases: an iterable of potential setting names/aliases.
 
         Returns:
-            A dictionary of the given names/aliases to their non-aliased names.
-            Note: For settings that do no exist, the name will be None.
+            A dictionary of the given names/aliases to their canonical names.
+            Note: For settings that do no exist, the canonical name will be None.
         """
         names_table = values(column('n', String), name='names').data([(name,) for name in names_or_aliases])
 
@@ -46,9 +46,10 @@ class SettingMixin(DBLogicBase):
                          or_(settings.c.name == names_table.c.n, setting_aliases.c.alias == names_table.c.n),
                          isouter=True)
                 )
+                .distinct()
             )
-            results = (await conn.execute(stmt)).mappings().all()
-        return {item['n']: item['name'] for item in results}
+            results = (await conn.execute(stmt)).all()
+        return dict(results)
 
     async def get_setting(self, name_or_alias: str, *, include_metadata: bool) -> Optional[Setting]:
         """
@@ -133,7 +134,7 @@ class SettingMixin(DBLogicBase):
                 await conn.execute(
                     insert(setting_aliases).values(
                         [{'setting': setting.name, 'alias': alias}]
-                    ).on_conflict_do_nothing()
+                    )
                 )
 
     async def update_setting(self, name: str, changed: Mapping[str, Any], new_contexts: Iterable[str],
@@ -242,10 +243,10 @@ class SettingMixin(DBLogicBase):
                 .order_by(configurable.c.setting, context_features.c.index)
             )).mappings().all()
             metadata_rows = await conn.execute(
-                select(*setting_metadata.c)
+                setting_metadata.select().order_by(setting_metadata.c.setting)
             )
             alias_rows = await conn.execute(
-                select(*setting_aliases.c)
+                setting_aliases.select().order_by(setting_aliases.c.setting)
             )
 
         configurables = {
@@ -289,3 +290,29 @@ class SettingMixin(DBLogicBase):
         """
         async with self.db_engine.begin() as conn:
             await conn.execute(settings.update().where(settings.c.name == setting_name).values(type=str(new_type)))
+
+    async def rename_setting(self, old_name: str, new_name: str):
+        """
+        Change a canonical setting name to another one, adding the old one as an alias
+        Args:
+            old_name: The name of the setting to rename
+            new_name: The new name to set for the setting
+        """
+        async with self.db_engine.begin() as conn:
+            # this should cascade through all other tables
+            await conn.execute(
+                settings.update()
+                .where(settings.c.name == old_name)
+                .values({"name": new_name})
+            )
+            # add the old name as an alias of the new one
+            await conn.execute(
+                insert(setting_aliases).values(
+                    [{'setting': new_name, 'alias': old_name}]
+                )
+            )
+            # if we renamed the alias to be canonical, we need to remove it from the aliases table
+            await conn.execute(
+                delete(setting_aliases)
+                .where(setting_aliases.c.setting == new_name, setting_aliases.c.alias == new_name)
+            )

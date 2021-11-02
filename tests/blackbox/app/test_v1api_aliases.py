@@ -1,7 +1,8 @@
 import json
-from typing import Iterable
+from typing import Iterable, Optional
 
 from pytest import fixture, mark, raises
+from requests import HTTPError
 
 
 @fixture
@@ -14,26 +15,25 @@ def default_declare_params() -> dict:
     }
 
 
-async def _call(coro):
-    resp = await coro
-    resp.raise_for_status()
-    return resp.json() if resp.content else None
+def _get_ok_data(response):
+    response.raise_for_status()
+    return response.json() if response.content else None
 
 
 @mark.asyncio
 async def test_settings(app_client, default_declare_params):
     async def declare(name: str, alias: str):
         default_declare_params.update({'name': name, 'alias': alias})
-        return await _call(app_client.put('/api/v1/settings/declare', data=json.dumps(default_declare_params)))
+        return _get_ok_data(await app_client.put('/api/v1/settings/declare', data=json.dumps(default_declare_params)))
 
     async def get(name_or_alias: str):
-        return await _call(app_client.get(f'/api/v1/settings/{name_or_alias}'))
+        return _get_ok_data(await app_client.get(f'/api/v1/settings/{name_or_alias}'))
 
     async def get_all():
-        return await _call(app_client.get('/api/v1/settings'))
+        return _get_ok_data(await app_client.get('/api/v1/settings'))
 
     async def get_all_full():
-        return await _call(app_client.get('/api/v1/settings', query_string={'include_additional_data': True}))
+        return _get_ok_data(await app_client.get('/api/v1/settings', query_string={'include_additional_data': True}))
 
     assert (await declare('god', 'elohim'))['created'] is True
     res = await get('elohim')
@@ -47,7 +47,8 @@ async def test_settings(app_client, default_declare_params):
     assert res['name'] == "god"
     assert res['aliases'] == ["elohim", "yahweh"]
     assert (await declare('moses', 'moshe'))['created'] is True
-    await _call(app_client.put(f'/api/v1/settings/moshe/type', data=json.dumps({'type': 'float'})))
+    resp = await app_client.put(f'/api/v1/settings/moshe/type', data=json.dumps({'type': 'float'}))
+    resp.raise_for_status()
     assert (await get('moshe'))['type'] == "float"
 
     assert (await get_all())["settings"] == [{"name": "god"}, {"name": "moses"}]
@@ -58,14 +59,15 @@ async def test_settings(app_client, default_declare_params):
          'metadata': {'testing': True}, 'aliases': ['moshe']}
     ]
 
-    await _call(app_client.delete(f'/api/v1/settings/moshe'))
+    resp = await app_client.delete(f'/api/v1/settings/moshe')
+    resp.raise_for_status()
     assert (await get_all())["settings"] == [{"name": "god"}]
 
 
 @mark.asyncio
 async def test_rules(app_client, default_declare_params):
     async def add(setting: str, theme: str):
-        return await _call(app_client.post('/api/v1/rules', data=json.dumps({
+        return _get_ok_data(await app_client.post('/api/v1/rules', data=json.dumps({
             'setting': setting,
             'feature_values': {'theme': theme},
             'value': 10,
@@ -73,21 +75,23 @@ async def test_rules(app_client, default_declare_params):
         })))
 
     async def search(setting: str, theme: str):
-        return await _call(app_client.post('/api/v1/rules/search', data=json.dumps({
+        return _get_ok_data(await app_client.post('/api/v1/rules/search', data=json.dumps({
             'setting': setting,
             'feature_values': {'theme': theme},
         })))
 
     async def query(*settings: Iterable[str]):
-        return await _call(app_client.post('/api/v1/rules/query', data=json.dumps({
+        return _get_ok_data(await app_client.post('/api/v1/rules/query', data=json.dumps({
             'setting_names': settings,
             'context_features_options': "*",
         })))
 
     default_declare_params.update({'name': 'cat', 'alias': 'hatul'})
-    await _call(app_client.put('/api/v1/settings/declare', data=json.dumps(default_declare_params)))
+    resp = await app_client.put('/api/v1/settings/declare', data=json.dumps(default_declare_params))
+    resp.raise_for_status()
     default_declare_params.update({'name': 'dog', 'alias': 'kelev'})
-    await _call(app_client.put('/api/v1/settings/declare', data=json.dumps(default_declare_params)))
+    resp = await app_client.put('/api/v1/settings/declare', data=json.dumps(default_declare_params))
+    resp.raise_for_status()
 
     cat_rule = (await add('cat', 'bright'))["rule_id"]
     hatul_rule = (await add('hatul', 'dark'))["rule_id"]
@@ -95,7 +99,7 @@ async def test_rules(app_client, default_declare_params):
     assert (await search("hatul", "bright"))["rule_id"] == cat_rule
     assert (await search("hatul", "dark"))["rule_id"] == hatul_rule
     assert (await search("kelev", "dracula"))["rule_id"] == kelev_rule
-    with raises(Exception):
+    with raises(HTTPError):
         await query("cat", "kelev", "yanshuf")
     assert (await query("cat", "kelev"))['rules'] == {
         'cat': [{'value': 10, 'context_features': [['theme', 'bright']], 'rule_id': cat_rule},
@@ -107,23 +111,41 @@ async def test_rules(app_client, default_declare_params):
 @mark.asyncio
 async def test_metadata(app_client, default_declare_params):
     async def get():
-        return (await _call(app_client.get('/api/v1/settings/yayin/metadata')))['metadata']
+        return _get_ok_data(await app_client.get('/api/v1/settings/yayin/metadata'))['metadata']
 
     default_declare_params.update({'name': 'wine', 'alias': 'yayin'})
-    await _call(app_client.put('/api/v1/settings/declare', data=json.dumps(default_declare_params)))
+    _get_ok_data(await app_client.put('/api/v1/settings/declare', data=json.dumps(default_declare_params)))
 
     assert await get() == {'testing': True}
-    await _call(app_client.post('/api/v1/settings/yayin/metadata', data=json.dumps({"metadata": {"alcohol": "6%"}})))
+    resp = await app_client.post('/api/v1/settings/yayin/metadata', data=json.dumps({"metadata": {"alcohol": "6%"}}))
+    resp.raise_for_status()
     assert await get() == {'testing': True, "alcohol": "6%"}
-    await _call(app_client.put('/api/v1/settings/yayin/metadata', data=json.dumps({"metadata": {
+    resp = await app_client.put('/api/v1/settings/yayin/metadata', data=json.dumps({"metadata": {
         "price": 50,
         "experimenting": True,
         "should_drink": True,
-    }})))
+    }}))
+    resp.raise_for_status()
     assert await get() == {"price": 50, "experimenting": True, "should_drink": True}
-    await _call(app_client.put('/api/v1/settings/yayin/metadata/should_drink', data=json.dumps({"value": False})))
+    resp = await app_client.put('/api/v1/settings/yayin/metadata/should_drink', data=json.dumps({"value": False}))
+    resp.raise_for_status()
     assert await get() == {"price": 50, "experimenting": True, "should_drink": False}
-    await _call(app_client.delete('/api/v1/settings/yayin/metadata/should_drink'))
+    resp = await app_client.delete('/api/v1/settings/yayin/metadata/should_drink')
+    resp.raise_for_status()
     assert await get() == {"price": 50, "experimenting": True}
-    await _call(app_client.delete('/api/v1/settings/yayin/metadata'))
+    resp = await app_client.delete('/api/v1/settings/yayin/metadata')
+    resp.raise_for_status()
     assert await get() == {}
+
+
+@mark.asyncio
+async def test_declare_existing_alias(app_client, default_declare_params):
+    async def declare(name: str, alias: Optional[str]):
+        default_declare_params.update({'name': name, 'alias': alias})
+        return _get_ok_data(await app_client.put('/api/v1/settings/declare', data=json.dumps(default_declare_params)))
+
+    assert (await declare('god', 'elohim'))['created'] is True
+    with raises(HTTPError):
+        await declare('dios', 'god')
+    with raises(HTTPError):
+        await declare('dios', 'elohim')

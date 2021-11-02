@@ -64,10 +64,17 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     """
     new_setting = input.to_setting()
     existing = await app.db_logic.get_setting_full(input.name)
+    if input.alias:
+        alias_canonical_name = (await app.db_logic.get_canonical_names([input.alias]))[input.alias]
+    else:
+        alias_canonical_name = None
     if existing is None:
         not_cf = await app.db_logic.get_not_found_context_features(input.configurable_features)
         if not_cf:
             return PlainTextResponse(f'{not_cf} are not acceptable context features',
+                                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        if alias_canonical_name:
+            return PlainTextResponse(f"alias '{input.alias}' used by another setting",
                                      status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
         logger.info('creating new setting', extra={'setting_name': new_setting.name})
         await app.db_logic.add_setting(new_setting, alias=input.alias)
@@ -111,7 +118,10 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
         to_change['default_value'] = str(orjson.dumps(new_setting.default_value), 'utf-8')
         changed.append('default_value')
 
-    if input.alias not in existing.aliases:
+    if input.alias and input.alias not in existing.aliases:
+        if alias_canonical_name and alias_canonical_name != existing.name:
+            return PlainTextResponse(f"alias '{input.alias}' used by another setting",
+                                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
         changed.append('alias')
 
     # we need to get which metadata keys are changed
@@ -263,6 +273,41 @@ async def set_setting_type(name: str, input: PutSettingTypeInput, app: HeksherAp
         return JSONResponse(PutSettingTypeConflictOutput(conflicts=conflicts).dict(),
                             status_code=status.HTTP_409_CONFLICT)
     await app.db_logic.set_setting_type(setting.name, new_type)
+    return None
+
+
+class RenameSettingInput(ORJSONModel):
+    new_name: SettingName = Field(description="the new name for the setting")
+
+
+@router.put('/{name}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def rename_setting(name: str, input: RenameSettingInput, app: HeksherApp = application):
+    """
+    Rename a setting, adding the previous name as an alias
+    """
+    # we try and validate the names we were given, and check they do not conflict with other settings
+    names_map = await app.db_logic.get_canonical_names((name, input.new_name))
+    # the names map should contain 2 entries:
+    # the first entry: given original name/alias -> canonical name
+    # (could be the same if the given original name is the canonical one)
+    canonical_name = names_map[name]
+    # if the canonical name is None - this setting does not exist
+    if not canonical_name:
+        return PlainTextResponse('setting does not exist', status_code=status.HTTP_404_NOT_FOUND)
+    # we check that the names differ, otherwise nothing should be done
+    if input.new_name == canonical_name:
+        return None
+    # the second entry: given new name -> None
+    # if the value is not None - this name/alias already exists
+    if names_map[input.new_name] is not None:
+        # if this new name is an alias for the same setting,
+        # we can allow this operation to make the alias the canonical name
+        # otherwise - the operation cannot be done since the new name already exists as another setting's name or alias
+        if names_map[input.new_name] != canonical_name:
+            return PlainTextResponse('name already exists', status_code=status.HTTP_409_CONFLICT)
+
+    await app.db_logic.rename_setting(canonical_name, input.new_name)
+    await app.db_logic.touch_setting(input.new_name)
     return None
 
 router.include_router(metadata_router)
