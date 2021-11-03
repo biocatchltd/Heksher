@@ -47,7 +47,7 @@ async def test_settings(app_client, default_declare_params):
     assert res['name'] == "god"
     assert res['aliases'] == ["elohim", "yahweh"]
     assert (await declare('moses', 'moshe'))['created'] is True
-    resp = await app_client.put(f'/api/v1/settings/moshe/type', data=json.dumps({'type': 'float'}))
+    resp = await app_client.put('/api/v1/settings/moshe/type', data=json.dumps({'type': 'float'}))
     resp.raise_for_status()
     assert (await get('moshe'))['type'] == "float"
 
@@ -59,7 +59,7 @@ async def test_settings(app_client, default_declare_params):
          'metadata': {'testing': True}, 'aliases': ['moshe']}
     ]
 
-    resp = await app_client.delete(f'/api/v1/settings/moshe')
+    resp = await app_client.delete('/api/v1/settings/moshe')
     resp.raise_for_status()
     assert (await get_all())["settings"] == [{"name": "god"}]
 

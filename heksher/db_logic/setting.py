@@ -4,11 +4,11 @@ from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional
 
 import orjson
 from _operator import itemgetter
-from sqlalchemy import String, column, join, select, values, or_, delete
+from sqlalchemy import String, column, delete, join, or_, select, values
 from sqlalchemy.dialects.postgresql import insert
 
 from heksher.db_logic.logic_base import DBLogicBase
-from heksher.db_logic.metadata import configurable, context_features, setting_metadata, settings, setting_aliases
+from heksher.db_logic.metadata import configurable, context_features, setting_aliases, setting_metadata, settings
 from heksher.setting import Setting
 from heksher.setting_types import SettingType, setting_type
 
@@ -174,7 +174,6 @@ class SettingMixin(DBLogicBase):
                     ).on_conflict_do_nothing()
                 )
 
-
     async def touch_setting(self, name: str, timestamp: Optional[datetime] = None):
         """
         Update a setting's last_touch_time
@@ -311,7 +310,7 @@ class SettingMixin(DBLogicBase):
                     [{'setting': new_name, 'alias': old_name}]
                 )
             )
-            # if we renamed the alias to be canonical, we need to remove it from the aliases table
+            # in case that the new name is an old alias, we remove the old alias from the aliases table
             await conn.execute(
                 delete(setting_aliases)
                 .where(setting_aliases.c.setting == new_name, setting_aliases.c.alias == new_name)

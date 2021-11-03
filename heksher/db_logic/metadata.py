@@ -53,5 +53,5 @@ rule_metadata = Table('rule_metadata', metadata,
 setting_aliases = Table('setting_aliases', metadata,
                         Column('setting', ForeignKey(settings.columns.name,
                                                      ondelete="CASCADE", onupdate="CASCADE"), index=True),
-                        Column('alias', String, nullable=False, unique=True, index=True),
+                        Column('alias', String, primary_key=True),
                         )

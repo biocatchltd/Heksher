@@ -1,6 +1,6 @@
 from datetime import datetime
 from logging import getLogger
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import orjson
 from fastapi import APIRouter, Response
@@ -57,7 +57,18 @@ class DeclareSettingOutput(ORJSONModel):
     )
 
 
-@router.put('/declare', response_model=DeclareSettingOutput)
+@router.put('/declare',
+            responses={
+                status.HTTP_200_OK: {
+                    "model": DeclareSettingOutput,
+                },
+                status.HTTP_422_UNPROCESSABLE_ENTITY: {
+                    "description": "Configurable features are not acceptable.",
+                },
+                status.HTTP_409_CONFLICT: {
+                    "description": "The given alias is used by another setting."
+                },
+            })
 async def declare_setting(input: DeclareSettingInput, app: HeksherApp = application):
     """
     Ensure that a setting exists, creating it if necessary.
@@ -75,7 +86,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
                                      status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
         if alias_canonical_name:
             return PlainTextResponse(f"alias '{input.alias}' used by another setting",
-                                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+                                     status_code=status.HTTP_409_CONFLICT)
         logger.info('creating new setting', extra={'setting_name': new_setting.name})
         await app.db_logic.add_setting(new_setting, alias=input.alias)
         return DeclareSettingOutput(created=True, changed=[], incomplete={})
@@ -121,7 +132,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     if input.alias and input.alias not in existing.aliases:
         if alias_canonical_name and alias_canonical_name != existing.name:
             return PlainTextResponse(f"alias '{input.alias}' used by another setting",
-                                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+                                     status_code=status.HTTP_409_CONFLICT)
         changed.append('alias')
 
     # we need to get which metadata keys are changed
@@ -213,7 +224,7 @@ async def get_settings(include_additional_data: bool = False, app: HeksherApp = 
     List all the settings in the service
     """
     if include_additional_data:
-        results = await app.db_logic.get_all_settings_full()
+        full_results = await app.db_logic.get_all_settings_full()
         return GetSettingsOutputWithData(settings=[
             GetSettingsOutputWithData_Setting(
                 name=spec.name,
@@ -222,7 +233,7 @@ async def get_settings(include_additional_data: bool = False, app: HeksherApp = 
                 default_value=spec.default_value,
                 metadata=spec.metadata,
                 aliases=spec.aliases,
-            ) for spec in results
+            ) for spec in full_results
         ])
     else:
         results = await app.db_logic.get_all_settings_names()
@@ -280,7 +291,15 @@ class RenameSettingInput(ORJSONModel):
     new_name: SettingName = Field(description="the new name for the setting")
 
 
-@router.put('/{name}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+@router.put('/{name}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response,
+            responses={
+                status.HTTP_404_NOT_FOUND: {
+                    "description": "The setting does not exist."
+                },
+                status.HTTP_409_CONFLICT: {
+                    "description": "The new name already exists as another setting's name or alias."
+                }
+            })
 async def rename_setting(name: str, input: RenameSettingInput, app: HeksherApp = application):
     """
     Rename a setting, adding the previous name as an alias

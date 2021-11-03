@@ -1,16 +1,16 @@
 """"Added alias table"
 
-Revision ID: 3b7bd626fabd
+Revision ID: 37b28f79cccf
 Revises: 89eab5c8510a
-Create Date: 2021-11-01 15:36:18.522890
+Create Date: 2021-11-03 14:54:08.104860
 
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = '3b7bd626fabd'
+revision = '37b28f79cccf'
 down_revision = '89eab5c8510a'
 branch_labels = None
 depends_on = None
@@ -21,9 +21,9 @@ def upgrade():
     op.create_table('setting_aliases',
     sa.Column('setting', sa.String(), nullable=True),
     sa.Column('alias', sa.String(), nullable=False),
-    sa.ForeignKeyConstraint(['setting'], ['settings.name'], onupdate='CASCADE', ondelete='CASCADE')
+    sa.ForeignKeyConstraint(['setting'], ['settings.name'], onupdate='CASCADE', ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('alias')
     )
-    op.create_index(op.f('ix_setting_aliases_alias'), 'setting_aliases', ['alias'], unique=True)
     op.create_index(op.f('ix_setting_aliases_setting'), 'setting_aliases', ['setting'], unique=False)
     op.drop_constraint('conditions_rule_fkey', 'conditions', type_='foreignkey')
     op.create_foreign_key(None, 'conditions', 'rules', ['rule'], ['id'], onupdate='CASCADE', ondelete='CASCADE')
@@ -51,6 +51,5 @@ def downgrade():
     op.drop_constraint(None, 'conditions', type_='foreignkey')
     op.create_foreign_key('conditions_rule_fkey', 'conditions', 'rules', ['rule'], ['id'], ondelete='CASCADE')
     op.drop_index(op.f('ix_setting_aliases_setting'), table_name='setting_aliases')
-    op.drop_index(op.f('ix_setting_aliases_alias'), table_name='setting_aliases')
     op.drop_table('setting_aliases')
     # ### end Alembic commands ###

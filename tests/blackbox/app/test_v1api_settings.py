@@ -514,7 +514,7 @@ async def test_rename_setting(app_client, old, new):
     res.raise_for_status()
     res = await app_client.put(f'/api/v1/settings/{old}', data=json.dumps({'new_name': new}))
     res.raise_for_status()
-    res = await app_client.get(f'/api/v1/settings/Z')
+    res = await app_client.get('/api/v1/settings/Z')
     res.raise_for_status()
     data = res.json()
     assert data['name'] == 'Z'
@@ -538,7 +538,7 @@ async def test_rename_setting_no_action_needed(app_client, old, new):
     res.raise_for_status()
     res = await app_client.put(f'/api/v1/settings/{old}', data=json.dumps({'new_name': new}))
     res.raise_for_status()
-    res = await app_client.get(f'/api/v1/settings/A')
+    res = await app_client.get('/api/v1/settings/A')
     res.raise_for_status()
     data = res.json()
     assert data['name'] == 'A'
@@ -562,7 +562,7 @@ async def test_rename_setting_to_alias(app_client, old, new):
     res.raise_for_status()
     res = await app_client.put(f'/api/v1/settings/{old}', data=json.dumps({'new_name': new}))
     res.raise_for_status()
-    res = await app_client.get(f'/api/v1/settings/A1')
+    res = await app_client.get('/api/v1/settings/A1')
     res.raise_for_status()
     data = res.json()
     assert data['name'] == 'A1'
@@ -598,12 +598,12 @@ async def test_rename_setting_existing(app_client, old, new):
     res = await app_client.put(f'/api/v1/settings/{old}', data=json.dumps({'new_name': new}))
     with raises(HTTPError):
         res.raise_for_status()
-    res = await app_client.get(f'/api/v1/settings/A')
+    res = await app_client.get('/api/v1/settings/A')
     res.raise_for_status()
     data = res.json()
     assert data['name'] == 'A'
     assert set(data['aliases']) == {'A1'}
-    res = await app_client.get(f'/api/v1/settings/B')
+    res = await app_client.get('/api/v1/settings/B')
     res.raise_for_status()
     data = res.json()
     assert data['name'] == 'B'
@@ -612,7 +612,7 @@ async def test_rename_setting_existing(app_client, old, new):
 
 @mark.asyncio
 async def test_rename_setting_not_existing(app_client):
-    res = await app_client.put(f'/api/v1/settings/X', data=json.dumps({'new_name': 'Y'}))
+    res = await app_client.put('/api/v1/settings/X', data=json.dumps({'new_name': 'Y'}))
     with raises(HTTPError):
         res.raise_for_status()
 
