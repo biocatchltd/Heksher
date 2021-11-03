@@ -15,7 +15,8 @@ async def test_post_setting_metadata(size_limit_setting, app_client):
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {'testing': False, 'second_key': 12}
+        'metadata': {'testing': False, 'second_key': 12},
+        'aliases': [],
     }
 
 
@@ -31,7 +32,8 @@ async def test_post_setting_metadata_new_key(size_limit_setting, app_client):
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {'testing': True, 'second_key': 12}
+        'metadata': {'testing': True, 'second_key': 12},
+        'aliases': [],
     }
 
 
@@ -62,7 +64,8 @@ async def test_post_setting_first_metadata(app_client):
         'configurable_features': ['user'],
         'type': 'int',
         'default_value': 10,
-        'metadata': {'testing': True}
+        'metadata': {'testing': True},
+        'aliases': [],
     }
 
 
@@ -78,7 +81,8 @@ async def test_put_setting_metadata(size_limit_setting, app_client):
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {'first': 'yes', 'second': 'no'}
+        'metadata': {'first': 'yes', 'second': 'no'},
+        'aliases': [],
     }
 
 
@@ -102,7 +106,8 @@ async def test_put_setting_empty_metadata(size_limit_setting, app_client):
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {}
+        'metadata': {},
+        'aliases': [],
     }
 
 
@@ -118,7 +123,8 @@ async def test_put_setting_metadata_existing_key(size_limit_setting, app_client)
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {'testing': 1000}
+        'metadata': {'testing': 1000},
+        'aliases': [],
     }
 
 
@@ -134,7 +140,8 @@ async def test_put_setting_metadata_not_existing_key(size_limit_setting, app_cli
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {'testing': True, 'hello': 'world'}
+        'metadata': {'testing': True, 'hello': 'world'},
+        'aliases': [],
     }
 
 
@@ -148,7 +155,8 @@ async def test_delete_setting_metadata(size_limit_setting, app_client):
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {}
+        'metadata': {},
+        'aliases': [],
     }
 
 
@@ -171,7 +179,8 @@ async def test_delete_specific_key_from_setting_metadata(size_limit_setting, app
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {'hello': 'world'}
+        'metadata': {'hello': 'world'},
+        'aliases': [],
     }
 
 

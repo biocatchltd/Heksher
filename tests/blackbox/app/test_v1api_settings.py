@@ -1,6 +1,7 @@
 import json
 
-from pytest import fixture, mark
+from pytest import fixture, mark, raises
+from requests import HTTPError
 
 
 @mark.asyncio
@@ -12,7 +13,8 @@ async def test_declare_new_setting(size_limit_setting, app_client):
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {'testing': True}
+        'metadata': {'testing': True},
+        'aliases': []
     }
 
 
@@ -124,7 +126,8 @@ async def test_declare_modify(app_client):
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 300,
-        'metadata': {'testing': True, 'ctr': 2}
+        'metadata': {'testing': True, 'ctr': 2},
+        'aliases': []
     }
 
 
@@ -143,21 +146,26 @@ async def test_declare_conflict(size_limit_setting, app_client):
 @mark.asyncio
 async def test_declare_type_upgrade(size_limit_setting, app_client):
     upgraded_type = 'float'
-    updated_setting = {
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': upgraded_type,
         'default_value': 200,
         'metadata': {'testing': True}
-    }
-
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps(updated_setting))
+    }))
     res.raise_for_status()
     assert res.json() == {'changed': ['type'], 'created': False, 'incomplete': {}}
 
     res = await app_client.get('/api/v1/settings/size_limit')
     res.raise_for_status()
-    assert res.json() == updated_setting
+    assert res.json() == {
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme'],
+        'type': upgraded_type,
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'aliases': [],
+    }
 
 
 @mark.asyncio
@@ -185,7 +193,8 @@ async def test_declare_incomplete(size_limit_setting, app_client):
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {'testing': True}
+        'metadata': {'testing': True},
+        'aliases': [],
     }
 
 
@@ -198,7 +207,8 @@ async def test_get_setting(size_limit_setting, app_client):
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {'testing': True}
+        'metadata': {'testing': True},
+        'aliases': [],
     }
 
 
@@ -284,11 +294,11 @@ async def test_get_settings_additional_data(app_client):
     assert res.json() == {
         'settings': [
             {'name': 'a', 'type': 'int', 'configurable_features': ['user', 'theme'],
-             'metadata': {}, 'default_value': None},
+             'metadata': {}, 'default_value': None, 'aliases': []},
             {'name': 'b', 'type': 'str', 'configurable_features': ['user', 'theme'],
-             'metadata': {}, 'default_value': None},
+             'metadata': {}, 'default_value': None, 'aliases': []},
             {'name': 'c', 'type': 'float', 'configurable_features': ['user', 'theme'],
-             'metadata': {}, 'default_value': None},
+             'metadata': {}, 'default_value': None, 'aliases': []},
         ]
     }
 
@@ -485,3 +495,148 @@ async def test_type_downgrade_with_rules_enum_bad(app_client):
     resp_json = res.json()
     assert resp_json['type'] == 'Enum["blue","green","red"]'
     assert resp_json['default_value'] == "blue"
+
+
+@mark.asyncio
+@mark.parametrize('old,new', [
+    ('A', 'Z'),
+    ('A1', 'Z'),
+])
+async def test_rename_setting(app_client, old, new):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+        'name': 'A',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'alias': 'A1'
+    }))
+    res.raise_for_status()
+    res = await app_client.put(f'/api/v1/settings/{old}', data=json.dumps({'new_name': new}))
+    res.raise_for_status()
+    res = await app_client.get('/api/v1/settings/Z')
+    res.raise_for_status()
+    data = res.json()
+    assert data['name'] == 'Z'
+    assert set(data['aliases']) == {'A', 'A1'}
+
+
+@mark.asyncio
+@mark.parametrize('old,new', [
+    ('A', 'A'),
+    ('A1', 'A'),
+])
+async def test_rename_setting_no_action_needed(app_client, old, new):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+        'name': 'A',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'alias': 'A1'
+    }))
+    res.raise_for_status()
+    res = await app_client.put(f'/api/v1/settings/{old}', data=json.dumps({'new_name': new}))
+    res.raise_for_status()
+    res = await app_client.get('/api/v1/settings/A')
+    res.raise_for_status()
+    data = res.json()
+    assert data['name'] == 'A'
+    assert set(data['aliases']) == {'A1'}
+
+
+@mark.asyncio
+@mark.parametrize('old,new', [
+    ('A', 'A1'),
+    ('A1', 'A1'),
+])
+async def test_rename_setting_to_alias(app_client, old, new):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+        'name': 'A',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'alias': 'A1'
+    }))
+    res.raise_for_status()
+    res = await app_client.put(f'/api/v1/settings/{old}', data=json.dumps({'new_name': new}))
+    res.raise_for_status()
+    res = await app_client.get('/api/v1/settings/A1')
+    res.raise_for_status()
+    data = res.json()
+    assert data['name'] == 'A1'
+    assert set(data['aliases']) == {'A'}
+
+
+@mark.asyncio
+@mark.parametrize('old,new', [
+    ('A', 'B'),
+    ('A', 'B1'),
+    ('A1', 'B'),
+    ('A1', 'B1'),
+])
+async def test_rename_setting_existing(app_client, old, new):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+        'name': 'A',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'alias': 'A1'
+    }))
+    res.raise_for_status()
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+        'name': 'B',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'alias': 'B1'
+    }))
+    res.raise_for_status()
+    res = await app_client.put(f'/api/v1/settings/{old}', data=json.dumps({'new_name': new}))
+    with raises(HTTPError):
+        res.raise_for_status()
+    res = await app_client.get('/api/v1/settings/A')
+    res.raise_for_status()
+    data = res.json()
+    assert data['name'] == 'A'
+    assert set(data['aliases']) == {'A1'}
+    res = await app_client.get('/api/v1/settings/B')
+    res.raise_for_status()
+    data = res.json()
+    assert data['name'] == 'B'
+    assert set(data['aliases']) == {'B1'}
+
+
+@mark.asyncio
+async def test_rename_setting_not_existing(app_client):
+    res = await app_client.put('/api/v1/settings/X', data=json.dumps({'new_name': 'Y'}))
+    with raises(HTTPError):
+        res.raise_for_status()
+
+
+@mark.asyncio
+async def test_rename_setting_cascade(app_client):
+    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+        'name': 'A',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+    }))
+    res.raise_for_status()
+    res = await app_client.post('/api/v1/rules', data=json.dumps({
+        'setting': 'A',
+        'feature_values': {'theme': 'dark'},
+        'value': 10,
+        'metadata': {'testing': True}
+    }))
+    res.raise_for_status()
+    rule_id = res.json()["rule_id"]
+    res = await app_client.put('/api/v1/settings/A', data=json.dumps({'new_name': 'Z'}))
+    res.raise_for_status()
+    res = await app_client.get(f'/api/v1/rules/{rule_id}')
+    res.raise_for_status()
+    assert res.json()["setting"] == "Z"

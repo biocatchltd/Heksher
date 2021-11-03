@@ -53,7 +53,10 @@ async def search_rule(input: SearchRuleInput, app: HeksherApp = application):
     """
     Get the ID of a rule with specific conditions.
     """
-    rule_id = await app.db_logic.get_rule_id(input.setting, input.feature_values)
+    setting = await app.db_logic.get_setting(input.setting, include_metadata=False)  # for aliasing
+    if not setting:
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
+    rule_id = await app.db_logic.get_rule_id(setting.name, input.feature_values)
     if not rule_id:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
     return SearchRuleOutput(rule_id=rule_id)
@@ -96,12 +99,12 @@ async def add_rule(input: AddRuleInput, app: HeksherApp = application):
         return PlainTextResponse(f'rule value is incompatible with setting type {setting.type}',
                                  status_code=status.HTTP_400_BAD_REQUEST)
 
-    existing_rule = await app.db_logic.get_rule_id(input.setting, input.feature_values)
+    existing_rule = await app.db_logic.get_rule_id(setting.name, input.feature_values)
     if existing_rule:
         return PlainTextResponse('rule already exists', status_code=status.HTTP_409_CONFLICT)
 
-    new_id = await app.db_logic.add_rule(input.setting, input.value, input.metadata, input.feature_values)
-    await app.db_logic.touch_setting(input.setting)
+    new_id = await app.db_logic.add_rule(setting.name, input.value, input.metadata, input.feature_values)
+    await app.db_logic.touch_setting(setting.name)
 
     return AddRuleOutput(rule_id=new_id)
 
@@ -216,12 +219,14 @@ async def query_rules(input: QueryRulesInput, app: HeksherApp = application):
                                      status_code=status.HTTP_404_NOT_FOUND)
 
     if input.setting_names:
-        not_settings = await app.db_logic.get_not_found_setting_names(input.setting_names)
+        names = await app.db_logic.get_canonical_names(input.setting_names)
+        not_settings = [k for k, v in names.items() if not v]
         if not_settings:
             return PlainTextResponse(f'the following are not setting names: {not_settings}',
                                      status_code=status.HTTP_404_NOT_FOUND)
 
-        query_result = await app.db_logic.query_rules(input.setting_names, input.valid_context_features_options,
+        query_result = await app.db_logic.query_rules(list(names.values()),
+                                                      input.valid_context_features_options,
                                                       input.cache_time, input.include_metadata)
     else:
         query_result = {}
