@@ -1,4 +1,7 @@
 # Heksher Changelog
+## 0.4.1
+### Removed
+* removed the alembic extra, it's now a requirement 
 ## 0.4.0 (REQ alembic upgrade)
 ### Added
 * Setting names can now include the `.` character
