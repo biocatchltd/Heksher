@@ -1,5 +1,5 @@
 # Heksher Changelog
-## Next (REQ alembic upgrade)
+## 0.4.0 (REQ alembic upgrade)
 ### Added
 * Setting names can now include the `.` character
 * Added schema information for setting types
