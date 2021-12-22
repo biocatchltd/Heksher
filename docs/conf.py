@@ -33,7 +33,6 @@ author = 'Biocatch'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.intersphinx", 'sphinx.ext.linkcode',
     'sphinx.ext.autosectionlabel'
 ]
 autosectionlabel_prefix_document = True
@@ -42,81 +41,6 @@ intersphinx_mapping = {
 }
 
 python_use_unqualified_type_names = True
-
-import ast
-import os
-
-import heksher
-
-release = 'main'
-
-
-# Resolve function for the linkcode extension.
-def linkcode_resolve(domain, info):
-    def is_assignment_node(node: ast.AST, var_name: str) -> bool:
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == var_name:
-                    return True
-        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == var_name:
-            return True
-        return False
-
-    def find_var_lines(parent_source, parent_start_lineno, var_name):
-        class_body = ast.parse(''.join(parent_source)).body[0].body
-        for node in class_body:
-            if is_assignment_node(node, var_name):
-                lineno = node.lineno
-                end_lineno = node.end_lineno
-                return parent_source[lineno:end_lineno + 1], lineno + parent_start_lineno - 1
-        return parent_source, parent_start_lineno
-
-    def find_source():
-        if info['module']:
-            obj = import_module('heksher.' + info['module'])
-        else:
-            obj = heksher
-        item = None
-        for part in info['fullname'].split('.'):
-            try:
-                new_obj = getattr(obj, part)
-            except AttributeError:
-                # sometimes we run into an attribute/thing that doesn't exist at import time, assume it's an instance
-                # var
-                item = part
-                break
-            if isinstance(new_obj, (str, int, float, bool, bytes, type(None), Mock)) \
-                    or isinstance(type(new_obj), EnumMeta):
-                # the object is a variable, we search for it's declaration manually
-                item = part
-                break
-            obj = new_obj
-        while hasattr(obj, 'fget'):  # for properties
-            obj = obj.fget
-        while hasattr(obj, 'func'):  # for cached properties
-            obj = obj.func
-        while hasattr(obj, '__func__'):  # for wrappers
-            obj = obj.__func__
-        while hasattr(obj, '__wrapped__'):  # for wrappers
-            obj = obj.__wrapped__
-
-        fn = getsourcefile(obj)
-        fn = os.path.relpath(fn, start=os.path.dirname(heksher.__file__))
-        source, lineno = getsourcelines(obj)
-        if item:
-            source, lineno = find_var_lines(source, lineno, item)
-        return fn, lineno, lineno + len(source) - 1
-
-    if domain != 'py':
-        return None
-    try:
-        fn, lineno, endno = find_source()
-        filename = f'heksher/{fn}#L{lineno}-L{endno}'
-    except Exception as e:
-        print(f'error getting link code {info}')
-        print_exc()
-        raise
-    return "https://github.com/biocatchltd/heksher/blob/%s/%s" % (release, filename)
 
 
 # Add any paths that contain templates here, relative to this directory.
