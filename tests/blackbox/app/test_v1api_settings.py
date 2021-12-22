@@ -512,7 +512,7 @@ async def test_rename_setting(app_client, old, new):
         'alias': 'A1'
     }))
     res.raise_for_status()
-    res = await app_client.put(f'/api/v1/settings/{old}', data=json.dumps({'name': new}))
+    res = await app_client.put(f'/api/v1/settings/{old}/name', data=json.dumps({'name': new}))
     res.raise_for_status()
     res = await app_client.get('/api/v1/settings/Z')
     res.raise_for_status()
@@ -536,7 +536,7 @@ async def test_rename_setting_no_action_needed(app_client, old, new):
         'alias': 'A1'
     }))
     res.raise_for_status()
-    res = await app_client.put(f'/api/v1/settings/{old}', data=json.dumps({'name': new}))
+    res = await app_client.put(f'/api/v1/settings/{old}/name', data=json.dumps({'name': new}))
     res.raise_for_status()
     res = await app_client.get('/api/v1/settings/A')
     res.raise_for_status()
@@ -560,7 +560,7 @@ async def test_rename_setting_to_alias(app_client, old, new):
         'alias': 'A1'
     }))
     res.raise_for_status()
-    res = await app_client.put(f'/api/v1/settings/{old}', data=json.dumps({'name': new}))
+    res = await app_client.put(f'/api/v1/settings/{old}/name', data=json.dumps({'name': new}))
     res.raise_for_status()
     res = await app_client.get('/api/v1/settings/A1')
     res.raise_for_status()
@@ -595,7 +595,7 @@ async def test_rename_setting_existing(app_client, old, new):
         'alias': 'B1'
     }))
     res.raise_for_status()
-    res = await app_client.put(f'/api/v1/settings/{old}', data=json.dumps({'name': new}))
+    res = await app_client.put(f'/api/v1/settings/{old}/name', data=json.dumps({'name': new}))
     with raises(HTTPError):
         res.raise_for_status()
     res = await app_client.get('/api/v1/settings/A')
@@ -635,7 +635,7 @@ async def test_rename_setting_cascade(app_client):
     }))
     res.raise_for_status()
     rule_id = res.json()["rule_id"]
-    res = await app_client.put('/api/v1/settings/A', data=json.dumps({'name': 'Z'}))
+    res = await app_client.put('/api/v1/settings/A/name', data=json.dumps({'name': 'Z'}))
     res.raise_for_status()
     res = await app_client.get(f'/api/v1/rules/{rule_id}')
     res.raise_for_status()
