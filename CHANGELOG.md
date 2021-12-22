@@ -1,4 +1,10 @@
 # Heksher Changelog
+## Next
+### Added
+* declarations are now tolerant of subtypes (to account for previous type upgrade)
+* documentation
+### Changed
+* the rename api endpoint has been changed to PUT /api/v1/<name>/name
 ## 0.4.1
 ### Removed
 * removed the alembic extra, it's now a requirement 

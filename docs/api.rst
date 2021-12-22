@@ -168,6 +168,7 @@ Response:
 * rules: A dictionary that maps setting names to arrays of rules that apply to that setting and pass the filters in the
   request. If a setting has not been changed since the cache_time, then it will not be in the result.
   Each rule is a dictionary with the following keys:
+
     * value: The value a setting should take if the rule is matched.
     * feature_values: An array of 2-str-arrays of the context feature names and values that the rule applies to, in order
       of the context features.
@@ -179,8 +180,247 @@ GET /api/v1/rules/<rule_id>
 Get a rule's data by its id.
 
 Response:
+
 * setting: The name of the setting the rule applies to.
 * value: The value a setting should take if the rule is matched.
 * feature_values: An array of 2-str-arrays of the context feature names and values that the rule applies to, in order
   of the context features
 * metadata: A dictionary of metadata associated with the rule.
+
+POST /api/v1/rules/<rule_id>/metadata
+*****************************************
+
+Update a rule's metadata. This will not delete existing keys, but might overwrite existing keys with new values.
+
+Request:
+
+* metadata: A dictionary of metadata to associate with the rule.
+
+Response is an empty 204 response.
+
+PUT /api/v1/rules/<rule_id>/metadata
+**************************************
+
+Set a rule's metadata. This will overwrite any existing metadata.
+
+Request:
+
+* metadata: A dictionary of metadata to associate with the rule.
+
+Response is an empty 204 response.
+
+DELETE /api/v1/rules/<rule_id>/metadata
+****************************************
+
+Remove all metadata associated with a rule. This is equivalent to calling `PUT /api/v1/rules/<rule_id>/metadata`_ with
+an empty dictionary.
+
+Response is an empty 204 response.
+
+
+GET /api/v1/rules/<rule_id>/metadata
+*********************************************
+
+Get a rule's metadata.
+
+Response:
+
+* metadata: A dictionary of metadata associated with the rule.
+
+PUT /api/v1/rules/<rule_id>/metadata/<key>
+*******************************************
+
+Set the value of a key in a rule's metadata.
+
+Request:
+
+* value: The value to associate with the key.
+
+Response is an empty 204 response.
+
+DELETE /api/v1/rules/<rule_id>/metadata/<key>
+*********************************************
+
+Remove a key from a rule's metadata.
+
+Response is an empty 204 response.
+
+Settings
+----------
+
+POST /api/v1/settings/declare
+*******************************
+
+.. note::
+
+    This should be the primary endpoint that users call to create and assert the state of settings.
+
+Declare that a setting will be used by a service. This endpoint can be used to create new settings or change attributes
+of existing settings (while retaining compatibility).
+
+Request:
+
+* name: The name of the setting.
+* configurable_features: A list of context feature names that the setting will be configurable with.
+* type: The type of the setting. (see :ref:`setting_types:Setting Types`)
+* default_value (optional): The default value of the setting.
+* metadata (optional): A dictionary of metadata associated with the setting.
+* alias (optional): An alias of the setting.
+
+Response:
+
+* created: True if the setting was created, false if it already existed.
+* changed: An array of strings that describe the attributes of the setting that changed due to the declaration.
+* incomplete: An dictionary describes the attributes of the setting were declared in an incomplete manner. The
+  dictionary maps attribute names to their complete values.
+
+If there is a difference between the setting's declared and actual values that cannot be consolidated, a 409 response
+will be returned.
+
+Heksher will attempt to consolidate the following differences, if they exist:
+* If the declaration contains configurable_features that do not exist in the setting, they will be added to the setting.
+
+    * If the declaration does not contains configurable_features that do exist in the setting, they will **not** be removed
+      from the setting, the complete value will be indicated in the response.
+
+* If the type declared is a supertype of the actual type, the actual type will be updated to the declared type.
+
+    * If the type declared is a subtype of the actual type, the complete value will be indicated in the response.
+
+* If the default value declared is different from the actual default value, the actual default value will be updated to
+  the declared default value.
+* If the metadata declared is different from the actual metadata, the actual metadata will be changed to the declared
+  metadata.
+* If the alias refers to an existing setting, and the name is not an existing setting. Then the old setting (under
+  alias) will be renamed to the new name, and the old name will be added as an alias to it.
+
+DELETE /api/v1/settings/<name>
+******************************
+
+Remove a setting. This will permanently remove the setting from the system.
+
+Response is an empty 204 response.
+
+GET /api/v1/settings/<name>
+*****************************
+
+Get data about a setting.
+
+Response:
+
+* name: The name of the setting.
+* configurable_features: A list of context feature names that the setting will be configurable with.
+* type: The type of the setting.
+* default_value: The default value of the setting.
+* metadata: A dictionary of metadata associated with the setting.
+* aliases: A list aliases of the setting.
+
+GET /api/v1/settings
+**********************
+
+Get all defined settings.
+
+Query Parameters:
+
+* include_additional_data (optional): If true, the response will include all data about all settings. If false (the
+  default), the response will only include the name of each setting.
+
+Response:
+
+* settings: A list of dictionaries describing each setting. Each element of the list is of the schema:
+
+    * name: The name of the setting.
+    * configurable_features: A list of context feature names that the setting will be configurable with. Only included
+      if include_additional_data is true.
+    * type: The type of the setting. Only included if include_additional_data is true.
+    * default_value: The default value of the setting. Only included if include_additional_data is true.
+    * metadata: A dictionary of metadata associated with the setting. Only included if include_additional_data is true.
+    * aliases: A list aliases of the setting. Only included if include_additional_data is true.
+
+PUT /api/v1/settings/<name>/type
+********************************
+
+Change a setting's type in a way that is not necessarily backwards compatible.
+
+Request:
+
+* type: The new type of the setting.
+
+The type will only be changed if the default value of the setting and the values of a all the rules of the setting are
+compatible with the new type. If this the case, an empty 204 response will be returned.
+
+Other wise, the 409 response will have the schema:
+
+* conflicts: A list of strings describing the conflicts.
+
+PUT /api/v1/settings/<name>/name
+*********************************
+
+Rename a setting.
+
+Request:
+
+* name: The new name of the setting.
+
+The name will only be changed if the name is not already in use. If this the case, the old name will be added as an 
+alias to the setting and an empty 204 response will be returned.
+
+If the new name is already in use, the 409 response will be returned.
+
+POST /api/v1/settings/<setting_name>/metadata
+************************************************
+
+Update a setting's metadata. This will not delete existing keys, but might overwrite existing keys with new values.
+
+Request:
+
+* metadata: A dictionary of metadata to associate with the setting.
+
+Response is an empty 204 response.
+
+PUT /api/v1/settings/<setting_name>/metadata
+***********************************************
+
+Set a setting's metadata. This will overwrite any existing metadata.
+
+Request:
+
+* metadata: A dictionary of metadata to associate with the setting.
+
+Response is an empty 204 response.
+
+DELETE /api/v1/settings/<setting_name>/metadata
+*****************************************************
+
+Remove all metadata associated with a setting. This is equivalent to calling
+`PUT /api/v1/settings/<setting_name>/metadata`_ with an empty dictionary.
+
+Response is an empty 204 response.
+
+
+GET /api/v1/settings/<setting_name>/metadata
+*********************************************
+
+Get a setting's metadata.
+
+Response:
+
+* metadata: A dictionary of metadata associated with the setting.
+
+PUT /api/v1/settings/<setting_name>/metadata/<key>
+*****************************************************
+
+Set the value of a key in a setting's metadata.
+
+Request:
+
+* value: The value to associate with the key.
+
+Response is an empty 204 response.
+
+DELETE /api/v1/settings/<setting_name>/metadata/<key>
+*******************************************************
+
+Remove a key from a setting's metadata.
+
+Response is an empty 204 response.

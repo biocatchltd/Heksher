@@ -97,11 +97,11 @@ Mappings can be of any type, even of other mappings. For example, a setting of t
 hold any dictionary mapping strings to dictionaries that map strings to integers.
 
 Type Order
-==========
+----------
 
 In some cases, it is useful to be able to specify an order over setting types. For example when we want to safely change
 setting's type. We say that type A is a supertype of type B if every value that can be stored in type B can also be
-stored in type A. This will help us when :ref:`api.declaring settings`.
+stored in type A. This will help us when :ref:`declaring settings <api:POST /api/v1/settings/declare>`.
 
 Examples:
 

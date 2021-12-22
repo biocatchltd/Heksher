@@ -10,9 +10,9 @@ attributes:
 
 * name: The name of the setting. This also serves as its unique identifier.
 * configurable_features: Which `context features`_ the setting is configurable for.
-* type: the `setting type`_ of the setting.
+* type: the :ref:`types <setting_types:Setting Types>` of the setting.
 * metadata: additional metadata about the setting.
-* aliases: a list of `aliases`_ of the setting.
+* aliases: a list of :ref:`aliases <setting_aliases:Setting Aliases>` of the setting.
 * default: the default value of the setting. Optional.
 
 Context Features
