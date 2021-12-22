@@ -107,6 +107,7 @@ Examples:
 
 * ``float`` is a supertype of ``int``
 * ``Sequence<float>`` is a supertype of ``Sequence<int>``
+* ``Enum[0,1,2]`` is a supertype of ``Enum[0,1]``
 
 This is a `non-strict partial order <https://en.wikipedia.org/wiki/Partially_ordered_set#Non-strict_partial_order>`_
 (reflexive, antisymmetric and transitive).

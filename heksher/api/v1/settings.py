@@ -93,7 +93,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
 
     to_change: Dict[str, Any] = {'last_touch_time': datetime.utcnow()}
     changed = []
-    incomplete = {}
+    incomplete: Dict[str, Any] = {}
 
     existing_setting_cfs = frozenset(existing.configurable_features)
     new_setting_cfs = frozenset(new_setting.configurable_features)
@@ -330,6 +330,7 @@ async def rename_setting(name: str, input: RenameSettingInput, app: HeksherApp =
     await app.db_logic.rename_setting(canonical_name, input.name)
     await app.db_logic.touch_setting(input.name)
     return None
+
 
 router.include_router(metadata_router)
 v1_router.include_router(router)
