@@ -33,13 +33,14 @@ features ``["environmnt", "tenant", "subtenant"]``, then an example context migh
 Rules
 ------------------
 A rule is a set of conditions that, when met by a `context`_, set a value for a specific `setting`_. Following up from
-the previous example, an example rule might be: `if an environment is "dev" and a tenant is "john", then set the setting
-"background_color" to "navy blue"`. Note that the this rule will be met for any context that has both the "dev"
-environment and the "john" tenant, regardless of any other context feature value. Indeed, a rule's condition is an
-intersect of exact-match predicates over the specific context features.
+the previous example, where the context features are ``["environmnt", "tenant", "subtenant"]``, an example rule might
+be: `if an environment is "dev" and a tenant is "john", then set the setting "background_color" to "navy blue"`. Note
+that the this rule will be met for any context that has both the "dev" environment and the "john" tenant, regardless of
+any other context feature value. Indeed, a rule's condition is an intersect of exact-match predicates over the specific
+context features.
 
-Rules do not exist on their own, many setting will have multiple rules over them. For an example we will have the
-setting "theme" (configurable only via the "environment" and "tenant" context features) with the following rules:
+Many setting will have multiple rules pertaining to them. As an example we will have the setting "theme" (configurable
+only via the "environment" and "tenant" context features) with the following rules:
 
 #. if the environment is "dev", then set the setting to "light"
 #. if the environment is "prod", then set the setting to "dark"
@@ -50,7 +51,7 @@ setting "theme" (configurable only via the "environment" and "tenant" context fe
 
 Rule Priority
 ^^^^^^^^^^^^^^^^^^^^^^^
-When observing the above list, a question might be raised: what happens if we our context is valid for multiple rules?
+When observing the above list, a question might be raised: what happens if our context is valid for multiple rules?
 for example, if we have the context ``{"environment": "dev", "tenant": "admin"}``, then we will match both rules 1 and
 5, so what will be the setting's value? This is where the order of the context features comes into play. In general,
 when multiple rules are met, the rule with latest exact-match context feature condition will be used (with the

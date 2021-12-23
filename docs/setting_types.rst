@@ -24,7 +24,7 @@ Settings of these types can hold any value of the appropriate type.
 
 Primitive From a Closed List: Enum[...]
 ---------------------------------------
-Setting values of type ``Enum[...]`` can only hold one value from the list of allowed values.
+Setting values of type ``Enum[...]`` can only hold **one** value from the list of allowed values.
 For example, a setting of type ``Enum["red","green","blue"]`` can only hold the values ``"red"``, ``"green"``, or
 ``"blue"``.
 
@@ -59,8 +59,8 @@ The values inside the list must be `primitive`_, but they do not need to all be 
 Subset of a Closed List: Flag[...]
 ------------------------------------
 Setting values of type ``Flag[...]`` can hold a list of values that are in the list of allowed values. In effect, they
-hold a subset of the allowed values. For example, a setting of type ``Flag["red", "green", "blue"]`` may be set any of
-these values:
+hold a subset of the allowed values. For example, a setting of type ``Flag["red", "green", "blue"]`` may be set to any
+of these values:
 
 
     * ``"red", "green", "blue"``
@@ -99,9 +99,9 @@ hold any dictionary mapping strings to dictionaries that map strings to integers
 Type Order
 ----------
 
-In some cases, it is useful to be able to specify an order over setting types. For example when we want to safely change
-setting's type. We say that type A is a supertype of type B if every value that can be stored in type B can also be
-stored in type A. This will help us when :ref:`declaring settings <api:POST /api/v1/settings/declare>`.
+Setting types have a partial ordering over them. This when we want to safely change a setting's type. We say that type
+A is a supertype of type B if every value that can be stored in type B can also be stored in type A. This will help us
+when :ref:`declaring settings <api:POST /api/v1/settings/declare>`.
 
 Examples:
 

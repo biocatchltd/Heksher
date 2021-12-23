@@ -2,6 +2,8 @@
 Heksher is a service that makes shared context variables a breeze. It is designed with setting management in mind, but
 can be used for any data that needs to be shared and updated throughout an entire architecture.
 
+[Documentation can be found here](https://heksher.readthedocs.io/en/latest/)
+
 ## How does it work?
 Heksher stores a collection of settings, these are the context variables. For each setting, there is a set of rules,
 each rule has a value and a set of conditions. These conditions are set by each context inside process individually.

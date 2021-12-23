@@ -3,8 +3,12 @@
 ### Added
 * declarations are now tolerant of subtypes (to account for previous type upgrade)
 * documentation
+* The api endpoint PUT /api/v1/rules/<rule>/value to change a rule's value
 ### Changed
 * the rename api endpoint has been changed to PUT /api/v1/<name>/name
+### Deprecated
+* The api endpoint PATCH /api/v1/rules/<rule> to change a rule's value is now deprecated, new users
+  should use PUT /api/v1/rules/<rule>/value
 ## 0.4.1
 ### Removed
 * removed the alembic extra, it's now a requirement 
