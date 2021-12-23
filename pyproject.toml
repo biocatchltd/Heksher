@@ -7,7 +7,7 @@ authors = ["Biocatch LTD <serverteam@biocatch.com>"]
 [tool.poetry.dependencies]
 python = "~3.8"
 
-fastapi = "^0.62.0"
+fastapi = "^0.67.0"
 httpx = "^0.16.0"
 orjson = "^3.4.0"
 pydantic = "^1.7.0"
@@ -32,6 +32,8 @@ yellowbox = {extras = ["postgresql"], version = "^0.6.4"}
 mypy = "^0.902"
 types-orjson = "^0.1.1"
 isort = "^5.9.1"
+Sphinx = "^4.3.1"
+sphinx-rtd-theme = "^1.0.0"
 
 [build-system]
 requires = ["poetry>=1.0.0"]

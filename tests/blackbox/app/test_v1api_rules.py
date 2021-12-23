@@ -535,11 +535,20 @@ async def test_query_rules_bad_cache_future(metadata: bool, app_client, setup_ru
     assert res.status_code == 422
 
 
+@fixture(params=['deprecated', 'new'])
+def patch_callback(request):
+    def callback(client, rule_name, value):
+        if request.param == 'deprecated':
+            return client.patch(f'/api/v1/rules/{rule_name}', data=json.dumps({'value': value}))
+        else:
+            return client.put(f'/api/v1/rules/{rule_name}/value', data=json.dumps({'value': value}))
+
+    return callback
+
+
 @mark.asyncio
-async def test_patch_rule_sanity(example_rule, app_client):
-    res = await app_client.patch(f'/api/v1/rules/{example_rule}', data=json.dumps(
-        {"value": 5}
-    ))
+async def test_patch_rule_sanity(patch_callback, example_rule, app_client):
+    res = await patch_callback(app_client, example_rule, 5)
     assert res.status_code == 204
     assert not res.content
     res = await app_client.get(f'/api/v1/rules/{example_rule}')
@@ -553,16 +562,12 @@ async def test_patch_rule_sanity(example_rule, app_client):
 
 
 @mark.asyncio
-async def test_patch_rule_missing(app_client):
-    res = await app_client.patch('/api/v1/rules/50000', data=json.dumps(
-        {"value": 5}
-    ))
+async def test_patch_rule_missing(patch_callback, app_client):
+    res = await patch_callback(app_client, '50000', 5)
     assert res.status_code == 404
 
 
 @mark.asyncio
-async def test_patch_rule_bad_data(example_rule, app_client):
-    res = await app_client.patch(f'/api/v1/rules/{example_rule}', data=json.dumps(
-        {"value": ["d5"]}
-    ))
+async def test_patch_rule_bad_data(patch_callback, example_rule, app_client):
+    res = await patch_callback(app_client, example_rule, ['d5'])
     assert res.status_code == 400

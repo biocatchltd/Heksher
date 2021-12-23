@@ -93,7 +93,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
 
     to_change: Dict[str, Any] = {'last_touch_time': datetime.utcnow()}
     changed = []
-    incomplete = {}
+    incomplete: Dict[str, Any] = {}
 
     existing_setting_cfs = frozenset(existing.configurable_features)
     new_setting_cfs = frozenset(new_setting.configurable_features)
@@ -116,7 +116,9 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
         incomplete['configurable_features'] = existing.configurable_features
 
     type_ = setting_type(existing.raw_type)
-    if not type_ <= new_setting.type:
+    if new_setting.type < type_:
+        incomplete['type'] = existing.raw_type
+    elif not type_ <= new_setting.type:
         return PlainTextResponse(
             f'Setting already exists with conflicting type. Expected {type_} (or upgradable one), '
             f'got {new_setting.type}', status_code=status.HTTP_409_CONFLICT
@@ -288,10 +290,10 @@ async def set_setting_type(name: str, input: PutSettingTypeInput, app: HeksherAp
 
 
 class RenameSettingInput(ORJSONModel):
-    new_name: SettingName = Field(description="the new name for the setting")
+    name: SettingName = Field(description="the new name for the setting")
 
 
-@router.put('/{name}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response,
+@router.put('/{name}/name', status_code=status.HTTP_204_NO_CONTENT, response_class=Response,
             responses={
                 status.HTTP_404_NOT_FOUND: {
                     "description": "The setting does not exist."
@@ -305,7 +307,7 @@ async def rename_setting(name: str, input: RenameSettingInput, app: HeksherApp =
     Rename a setting, adding the previous name as an alias
     """
     # we try and validate the names we were given, and check they do not conflict with other settings
-    names_map = await app.db_logic.get_canonical_names((name, input.new_name))
+    names_map = await app.db_logic.get_canonical_names((name, input.name))
     # the names map should contain 2 entries:
     # the first entry: given original name/alias -> canonical name
     # (could be the same if the given original name is the canonical one)
@@ -314,20 +316,21 @@ async def rename_setting(name: str, input: RenameSettingInput, app: HeksherApp =
     if not canonical_name:
         return PlainTextResponse('setting does not exist', status_code=status.HTTP_404_NOT_FOUND)
     # we check that the names differ, otherwise nothing should be done
-    if input.new_name == canonical_name:
+    if input.name == canonical_name:
         return None
     # the second entry: given new name -> None
     # if the value is not None - this name/alias already exists
-    if names_map[input.new_name] is not None:
+    if names_map[input.name] is not None:
         # if this new name is an alias for the same setting,
         # we can allow this operation to make the alias the canonical name
         # otherwise - the operation cannot be done since the new name already exists as another setting's name or alias
-        if names_map[input.new_name] != canonical_name:
+        if names_map[input.name] != canonical_name:
             return PlainTextResponse('name already exists', status_code=status.HTTP_409_CONFLICT)
 
-    await app.db_logic.rename_setting(canonical_name, input.new_name)
-    await app.db_logic.touch_setting(input.new_name)
+    await app.db_logic.rename_setting(canonical_name, input.name)
+    await app.db_logic.touch_setting(input.name)
     return None
+
 
 router.include_router(metadata_router)
 v1_router.include_router(router)
