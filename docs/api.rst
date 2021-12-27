@@ -10,7 +10,7 @@ Unless otherwise noted, all responses have the status code 200.
 Since Heksher is a FastAPI service, the API can also be accessed via the redoc endpoint ``/redoc``.
 
 The most common endpoints for users are :ref:`setting declaration <api:POST /api/v1/settings/declare>`,
-and :ref:`rule querying <api:POST /api/v1/rules/query>`
+and :ref:`rule querying <api:GET /api/v1/rules/query>`
 
 General
 -------
@@ -124,15 +124,16 @@ Delete a rule.
 
 Responds with a 204 response.
 
-POST /api/v1/rules/search
+GET /api/v1/rules/search
 ***************************
 
 Find a rule by its setting and feature_values.
 
-Request:
+Query parameters:
 
 * **setting**: The name of the setting the rule to applies to.
-* **feature_values**: A dictionary of the values of the context features that the rule should apply to.
+* **feature_values**: A comma-seperated list of colon-seperated pairs context features and their values that the rule
+  should apply to. Example: ``../api/v1/rules/search?setting=foo&feature_values=bar:a,baz:b``
 
 If a rule does not exists to that setting and feature_values, returns a 404 response.
 
@@ -156,39 +157,66 @@ PATCH /api/v1/rules/<rule_id>
 
 A deprecated route that is equivalent to `PUT /api/v1/rules/<rule_id>/value`_.
 
-POST /api/v1/rules/query
+GET /api/v1/rules/query
 **************************
 
 .. note::
 
     This should be the primary endpoint that users call to get rules.
 
+.. note::
+
+    This endpoint supports the
+    `If-None-Match <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-None-Match>`_ header. It also returns
+    an `ETag <https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag>`_ header on successful responses.
+
 Query the rules in the service, filtering in only rules pertaining to specific settings and contexts.
 
-Request:
+Query parameters:
 
-* **setting_names**: A list of the names of the settings to query. Only rules that apply to one of the
-  settings in this list will be returned.
-* **context_feature_options**: A dictionary that maps context feature names to arrays of values to consider when
-  querying. Only rules whose exact-match conditions are all in the respective arrays will be returned. Alternatively,
-  a context feature value list can be replaced with the string "*" to indicate that all values of that context feature
-  should be considered. Finally, the entire dictionary can be replaced with the string "*" to indicate that all rules
-  should be returned, regardless of their condition.
-* **cache_time** (optional): The timestamp of the user's cache for this query. If provided, then only settings that have
-  been changed since this timestamp will be returned (the rest will be omitted from the results).
-* **include_metadata** (optional, default false): If true, then the metadata associated with each rule will be included in
+* **settings**: A comma-seperated list of the names of the settings to query. If specified only rules that apply to one
+  of the settings in this list will be returned. Example: ``../api/v1/rules/query?settings=foo,bar``
+* **context_filters**: A comma-seperated list of filters to filter rules by their context. If any filters are specified
+  only rules all of whose exact-match context conditions match the relevant filters will be returned. Each filter is
+  is a colon-separated pair. The first element of the pair is the context feature name, the second element is either
+  the special character ``*`` to accept all values of the context feature, or a comma-seperated list of the values
+  in parentheses. Example: ``../api/v1/rules/query?context_filters=foo:*,bar:(a,b)``. Alternatively, the context_filters
+  can be the special character ``*`` to accept all context features (this is the default behaviour).
+
+  .. note:: Context Filter Example
+
+      Assuming a setting has the context features ``X``, ``Y``, and ``Z``, and the following rules:
+
+      .. csv-table::
+        :header: "X", "Y", "Z", "**rule_id**"
+
+        "x_0", "\*", "\*", "1"
+        "x_1", "\*", "\*", "2"
+        "x_0", "y_0", "\*", "3"
+        "x_0", "y_1", "\*", "4"
+        "x_2", "y_0", "\*", "5"
+        "\*", "\*", "z_0", "6"
+        "x_0", "\*", "z_0", "7"
+
+      The the context filter: ``X:(x_0,x_1),Y:*`` will only allow the rules ``1``, ``2``, ``3``, and ``4``. Rule ``5`` will
+      be rejected because it's X condition is not in the X filter's list of values. Rules ``6`` and ``7`` will be rejected
+      because they have a Z condition and there is no Z filter.
+
+* **include_metadata** (default false): If true, then the metadata associated with each rule will be included in
   the results.
 
 Response:
 
-* **rules**: A dictionary that maps setting names to arrays of rules that apply to that setting and pass the filters in the
-  request. If a setting has not been changed since the cache_time, then it will not be in the result.
-  Each rule is a dictionary with the following keys:
+* **settings**: A dictionary that maps setting names to query results of that setting and pass the filters in the
+  request. Each rule is a dictionary with the following keys:
 
-    * **value**: The value a setting should take if the rule is matched.
-    * **feature_values**: An array of 2-str-arrays of the context feature names and values that the rule applies to, in order
-      of the context features.
-    * **metadata**: A dictionary of metadata associated with the rule. Only present if include_metadata is true.
+    * **rules**: A list of rule dictionaries, that contains all teh rules that met the query criteria. Each rule
+      dictionary has the following keys:
+
+        * **value**: The value a setting should take if the rule is matched.
+        * **feature_values**: An array of 2-str-arrays of the context feature names and values that the rule applies to, in order
+          of the context features.
+        * **metadata**: A dictionary of metadata associated with the rule. Only present if include_metadata is true.
 
 GET /api/v1/rules/<rule_id>
 ***************************

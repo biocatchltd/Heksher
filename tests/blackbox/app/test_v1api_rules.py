@@ -594,3 +594,14 @@ async def test_query_etag(app_client, setup_rules, metadata):
 
     assert repeat_resp.status_code == 304
     assert repeat_resp.content == b'{"detail":"Not Modified"}'
+
+
+@mark.asyncio
+@mark.parametrize('metadata', [False, True])
+async def test_query_repeat_filter(app_client, setup_rules, metadata):
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': 'theme:*,trust:(full,none),theme:*',
+        'include_metadata': str(metadata)
+    })
+    assert res.status_code == 400

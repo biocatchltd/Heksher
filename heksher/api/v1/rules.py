@@ -2,7 +2,7 @@ import re
 from logging import getLogger
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from fastapi import APIRouter, Query, Response
+from fastapi import APIRouter, Query, Response, HTTPException
 from fastapi.responses import ORJSONResponse
 from pydantic import Field, validator
 from starlette import status
@@ -207,9 +207,16 @@ async def query_rules(request: Request, app: HeksherApp = application,
     if raw_context_filters == '*':
         context_features_options: Optional[Dict[str, Optional[List[str]]]] = None
     else:
-        context_features_options = {match['key']: (None if match['values'] is None else match['values'].split(','))
-                                    for match in re.finditer(r'(?P<key>[a-z]+):(\((?P<values>[^)]+)\)|\*)',
-                                                             raw_context_filters)}
+        context_filter_items = ((match['key'], (None if match['values'] is None else match['values'].split(',')))
+                                for match in
+                                re.finditer(r'(?P<key>[a-z]+):(\((?P<values>[^)]+)\)|\*)', raw_context_filters))
+        context_features_options = {}
+        for k, v in context_filter_items:
+            if k in context_features_options:
+                return PlainTextResponse(f'context name repeated in context filter: {k}',
+                                         status_code=status.HTTP_400_BAD_REQUEST)
+            context_features_options[k] = v
+
         not_context_features = await app.db_logic.get_not_found_context_features(context_features_options)
         if not_context_features:
             return PlainTextResponse(f'the following are not valid context features: {not_context_features}',
