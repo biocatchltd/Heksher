@@ -1,1 +1,1 @@
-python -m pytest tests/blackbox/app -s -x --cov=heksher --cov-report=xml --cov-report=term-missing
+python -m pytest tests/blackbox/app -s -x --cov=heksher --cov-report=xml --concurrency=greenlet --cov-report=term-missing

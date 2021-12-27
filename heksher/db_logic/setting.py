@@ -1,4 +1,3 @@
-from datetime import datetime
 from itertools import groupby
 from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional
 
@@ -67,6 +66,7 @@ class SettingMixin(DBLogicBase):
                     join(settings, setting_aliases, settings.c.name == setting_aliases.c.setting, isouter=True)
                 )
                 .where(or_(settings.c.name == name_or_alias, setting_aliases.c.alias == name_or_alias))
+                .limit(1)
             )
             data_row = (await conn.execute(stmt)).mappings().first()
 
@@ -116,7 +116,6 @@ class SettingMixin(DBLogicBase):
                     name=setting.name,
                     type=str(setting.type),
                     default_value=str(orjson.dumps(setting.default_value), 'utf-8'),
-                    last_touch_time=datetime.utcnow(),
                 )
             )
             await conn.execute(
@@ -173,19 +172,6 @@ class SettingMixin(DBLogicBase):
                         [{'setting': name, 'alias': alias}]
                     ).on_conflict_do_nothing()
                 )
-
-    async def touch_setting(self, name: str, timestamp: Optional[datetime] = None):
-        """
-        Update a setting's last_touch_time
-        Args:
-            name: the name of the setting to update
-            timestamp: the time to set the last_touch_time, defaults to datetime.now
-        """
-        timestamp = timestamp or datetime.utcnow()
-        async with self.db_engine.begin() as conn:
-            await conn.execute(
-                settings.update().where(settings.c.name == name).values(last_touch_time=timestamp)
-            )
 
     async def delete_setting(self, name: str) -> bool:
         """

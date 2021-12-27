@@ -68,6 +68,30 @@ async def test_patch_before_context_feature(app_client):
 
 
 @mark.asyncio
+async def test_patch_to_middle_context_feature(app_client):
+    response = await app_client.patch('/api/v1/context_features/trust/index', data=json.dumps(
+        {"to_before": "theme"}
+    ))
+    response.raise_for_status()
+    context_features = await app_client.get('/api/v1/context_features')
+    assert context_features.json() == {
+        'context_features': ["user", "trust", "theme"]
+    }
+
+
+@mark.asyncio
+async def test_patch_same_spot_context_feature(app_client):
+    response = await app_client.patch('/api/v1/context_features/trust/index', data=json.dumps(
+        {"to_before": "user"}
+    ))
+    response.raise_for_status()
+    context_features = await app_client.get('/api/v1/context_features')
+    assert context_features.json() == {
+        'context_features': ["trust", "user", "theme"]
+    }
+
+
+@mark.asyncio
 async def test_patch_context_feature_doesnt_exists(app_client):
     response = await app_client.patch('/api/v1/context_features/trust/index', data=json.dumps(
         {"to_after": "black"}

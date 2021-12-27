@@ -118,10 +118,10 @@ async def test_get_rule_missing(example_rule, app_client):
 
 @mark.asyncio
 async def test_search_rule(example_rule, app_client, sql_service):
-    res = await app_client.post('/api/v1/rules/search', data=json.dumps({
+    res = await app_client.get('/api/v1/rules/search', query_string={
         'setting': 'size_limit',
-        'feature_values': [('theme', 'bright')]
-    }))
+        'feature_values': 'theme:bright'
+    })
     res.raise_for_status()
     assert res.json() == {
         'rule_id': example_rule
@@ -130,19 +130,19 @@ async def test_search_rule(example_rule, app_client, sql_service):
 
 @mark.asyncio
 async def test_search_rule_empty(example_rule, app_client, sql_service):
-    res = await app_client.get('/api/v1/rules/search', data=json.dumps({
+    res = await app_client.get('/api/v1/rules/search', query_string={
         'setting': 'size_limit',
-        'feature_values': []
-    }))
+        'feature_values': ''
+    })
     assert res.status_code == 422
 
 
 @mark.asyncio
 async def test_search_rule_missing(example_rule, app_client):
-    res = await app_client.post('/api/v1/rules/search', data=json.dumps({
+    res = await app_client.get('/api/v1/rules/search', query_string={
         'setting': 'size_limit',
-        'feature_values': [('theme', 'dark')]
-    }))
+        'feature_values': 'theme:dark'
+    })
     assert res.status_code == 404
 
 
@@ -194,96 +194,34 @@ async def setup_rules(mk_setting, mk_rule):
     await mk_rule('a', {'theme': 'black', 'user': 'admin'}, 7)
 
 
+def patch_rule_expectation_with_metadata(expected_rules):
+    for rule in chain.from_iterable(s['rules'] for s in expected_rules['settings'].values()):
+        rule['metadata'] = {'test': 'yes'}
+
+
 @mark.asyncio
 @mark.parametrize('metadata', [False, True])
 async def test_query_rules(metadata: bool, app_client, setup_rules):
-    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'long_setting_name'],
-        'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
-        'include_metadata': metadata
-    }))
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': 'trust:(full,part),theme:(black)',
+        'include_metadata': str(metadata)
+    })
 
     expected = {
-        'rules': {
-            'a': [
+        'settings': {
+            'a': {'rules': [
                 {'context_features': [['trust', 'full']], 'value': 1, 'rule_id': 1},
                 {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
                 {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3, 'rule_id': 3}
-            ],
-            'long_setting_name': [
+            ]},
+            'long_setting_name': {'rules': [
                 {'context_features': [['trust', 'part']], 'value': 5, 'rule_id': 5}
-            ]
+            ]}
         }
     }
     if metadata:
-        for rule in chain.from_iterable(expected['rules'].values()):
-            rule['metadata'] = {'test': 'yes'}
-
-    assert res.json() == expected
-
-
-@mark.asyncio
-@mark.parametrize('metadata', [False, True])
-async def test_query_rules_time_cache(metadata: bool, app_client, setup_rules, mk_rule):
-    current_time = datetime.utcnow()
-    # touch a to change its last_touch_time
-    await mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
-
-    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'long_setting_name'],
-        'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
-        'include_metadata': metadata,
-        'cache_time': current_time.isoformat(),
-    }))
-
-    expected = {
-        'rules': {
-            'a': [
-                {'context_features': [['trust', 'full']], 'value': 1, 'rule_id': 1},
-                {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
-                {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3, 'rule_id': 3}
-            ],
-        }
-    }
-    if metadata:
-        for rule in chain.from_iterable(expected['rules'].values()):
-            rule['metadata'] = {'test': 'yes'}
-
-    assert res.json() == expected
-
-
-@mark.asyncio
-@mark.parametrize('metadata', [False, True])
-@mark.parametrize('suffix', ['Z', '+00:00', '+01:02', '-06:05'])
-async def test_query_rules_bad_cache_time_zone(metadata: bool, suffix: str, app_client, setup_rules, mk_rule):
-    current_time = datetime.utcnow()
-    # touch a to change its last_touch_time
-    await mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
-
-    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'long_setting_name'],
-        'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
-        'include_metadata': metadata,
-        'cache_time': current_time.isoformat() + suffix,
-    }))
-    assert res.status_code == 422
-
-
-@mark.asyncio
-@mark.parametrize('metadata', [False, True])
-async def test_query_rules_fully_cached(metadata: bool, app_client, setup_rules, mk_rule):
-    current_time = datetime.utcnow()
-
-    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'long_setting_name'],
-        'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
-        'include_metadata': metadata,
-        'cache_time': current_time.isoformat(),
-    }))
-
-    expected = {
-        'rules': {}
-    }
+        patch_rule_expectation_with_metadata(expected)
 
     assert res.json() == expected
 
@@ -299,28 +237,27 @@ async def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, s
         INSERT INTO rule_metadata (rule, key, value) VALUES (8, 'test', '"yes"')
         """)
 
-    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'long_setting_name'],
-        'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
-        'include_metadata': metadata
-    }))
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': 'trust:(full,part),theme:(black)',
+        'include_metadata': str(metadata)
+    })
 
     expected = {
-        'rules': {
-            'a': [
+        'settings': {
+            'a': {'rules': [
                 {'context_features': [['trust', 'full']], 'rule_id': 1, 'value': 1},
                 {'context_features': [['theme', 'black']], 'rule_id': 2, 'value': 2},
                 {'context_features': [['trust', 'full'], ['theme', 'black']], 'rule_id': 3, 'value': 3}
-            ],
-            'long_setting_name': [
+            ]},
+            'long_setting_name': {'rules': [
                 {'context_features': [['trust', 'part']], 'rule_id': 5, 'value': 5},
                 {'context_features': [], 'rule_id': 8, 'value': 10}
-            ]
+            ]}
         }
     }
     if metadata:
-        for rule in chain.from_iterable(expected['rules'].values()):
-            rule['metadata'] = {'test': 'yes'}
+        patch_rule_expectation_with_metadata(expected)
 
     assert res.json() == expected
 
@@ -328,15 +265,16 @@ async def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, s
 @mark.asyncio
 @mark.parametrize('metadata', [False, True])
 async def test_query_rules_nooptions(metadata: bool, app_client, setup_rules):
-    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a'],
-        'context_features_options': {},
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a',
+        'context_filters': '',
         'include_metadata': metadata
-    }))
+    })
+    res.raise_for_status()
 
     expected = {
-        'rules': {
-            'a': []
+        'settings': {
+            'a': {'rules': []}
         }
     }
 
@@ -354,24 +292,23 @@ async def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, s
         INSERT INTO rule_metadata (rule, key, value) VALUES (8, 'test', '"yes"')
         """)
 
-    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'long_setting_name'],
-        'context_features_options': {},
-        'include_metadata': metadata
-    }))
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': '',
+        'include_metadata': str(metadata)
+    })
 
     expected = {
-        'rules': {
-            'a': [],
-            'long_setting_name': [
+        'settings': {
+            'a': {'rules': []},
+            'long_setting_name': {'rules': [
                 {'context_features': [], 'value': 10, 'rule_id': 8},
-            ]
+            ]}
         }
     }
 
     if metadata:
-        for rule in chain.from_iterable(expected['rules'].values()):
-            rule['metadata'] = {'test': 'yes'}
+        patch_rule_expectation_with_metadata(expected)
 
     assert res.json() == expected
 
@@ -379,29 +316,28 @@ async def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, s
 @mark.asyncio
 @mark.parametrize('metadata', [False, True])
 async def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
-    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'long_setting_name'],
-        'context_features_options': '*',
-        'include_metadata': metadata
-    }))
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': '*',
+        'include_metadata': str(metadata)
+    })
 
     expected = {
-        'rules': {
-            'a': [
+        'settings': {
+            'a': {'rules': [
                 {'context_features': [['trust', 'full']], 'value': 1, 'rule_id': 1},
                 {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
                 {'context_features': [['trust', 'full'], ['theme', 'black']], 'rule_id': 3, 'value': 3},
                 {'context_features': [['user', 'admin'], ['theme', 'black']], 'rule_id': 7, 'value': 7}
-            ],
-            'long_setting_name': [
+            ]},
+            'long_setting_name': {'rules': [
                 {'context_features': [['trust', 'none']], 'rule_id': 4, 'value': 4},
                 {'context_features': [['trust', 'part']], 'rule_id': 5, 'value': 5}
-            ]
+            ]}
         }
     }
     if metadata:
-        for rule in chain.from_iterable(expected['rules'].values()):
-            rule['metadata'] = {'test': 'yes'}
+        patch_rule_expectation_with_metadata(expected)
 
     assert res.json() == expected
 
@@ -409,27 +345,26 @@ async def test_query_rules_matchall(metadata: bool, app_client, setup_rules):
 @mark.asyncio
 @mark.parametrize('metadata', [False, True])
 async def test_query_rules_wildcard_some(metadata: bool, app_client, setup_rules):
-    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'long_setting_name'],
-        'context_features_options': {'theme': '*', 'trust': ['full', 'none']},
-        'include_metadata': metadata
-    }))
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': 'theme:*,trust:(full,none)',
+        'include_metadata': str(metadata)
+    })
 
     expected = {
-        'rules': {
-            'a': [
+        'settings': {
+            'a': {'rules': [
                 {'context_features': [['trust', 'full']], 'value': 1, 'rule_id': 1},
                 {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
                 {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3, 'rule_id': 3},
-            ],
-            'long_setting_name': [
+            ]},
+            'long_setting_name': {'rules': [
                 {'context_features': [['trust', 'none']], 'value': 4, 'rule_id': 4},
-            ]
+            ]}
         }
     }
     if metadata:
-        for rule in chain.from_iterable(expected['rules'].values()):
-            rule['metadata'] = {'test': 'yes'}
+        patch_rule_expectation_with_metadata(expected)
 
     assert res.json() == expected
 
@@ -437,102 +372,130 @@ async def test_query_rules_wildcard_some(metadata: bool, app_client, setup_rules
 @mark.asyncio
 @mark.parametrize('metadata', [False, True])
 async def test_query_rules_wildcard_only(metadata: bool, app_client, setup_rules):
-    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'long_setting_name'],
-        'context_features_options': {'theme': '*'},
-        'include_metadata': metadata
-    }))
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': 'theme:*',
+        'include_metadata': str(metadata)
+    })
 
     expected = {
-        'rules': {
-            'a': [
+        'settings': {
+            'a': {'rules': [
                 {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
-            ],
-            'long_setting_name': []
+            ]},
+            'long_setting_name': {'rules': []}
         }
     }
     if metadata:
-        for rule in chain.from_iterable(expected['rules'].values()):
-            rule['metadata'] = {'test': 'yes'}
+        patch_rule_expectation_with_metadata(expected)
 
     assert res.json() == expected
 
 
 @mark.asyncio
 async def test_query_rules_bad_contexts(app_client, setup_rules):
-    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'long_setting_name'],
-        'context_features_options': {'trust': ['full', 'part'], 'theme': ['black'], 'love': ['overflowing']},
-    }))
-    assert 400 <= res.status_code <= 499
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': 'theme:(black),trust:(full,part),love:(overflowing)'
+    })
+    assert res.status_code == 404
 
 
 @mark.asyncio
 async def test_query_rules_empty_contexts(app_client, setup_rules):
-    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'long_setting_name'],
-        'context_features_options': {'trust': []}
-    }))
-    assert 400 <= res.status_code <= 499
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': 'trust:()'
+    })
+    assert res.status_code == 422
 
 
 @mark.asyncio
 async def test_query_rules_bad_settings(app_client, setup_rules):
-    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'd'],
-        'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
-    }))
-    assert 400 <= res.status_code <= 499
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,d',
+        'context_filters': 'trust:(full,part),theme:(black)'
+    })
+    assert res.status_code == 404
 
 
 @mark.asyncio
-@mark.parametrize('options', [None, '**', 'wildcard'])
+@mark.parametrize('options', ['null', '**', 'wildcard'])
 async def test_query_rules_bad_options(app_client, setup_rules, options):
-    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a'],
-        'context_features_options': options,
-    }))
-    assert res.status_code == 422, res.content
-
-
-@mark.asyncio
-@mark.parametrize('options', [None, '**', 'wildcard'])
-async def test_query_rules_bad_inner_option(app_client, setup_rules, options):
-    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a'],
-        'context_features_options': {'trust': options},
-    }))
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a',
+        'context_filters': options,
+    })
     assert res.status_code == 422, res.content
 
 
 @mark.asyncio
 @mark.parametrize('metadata', [False, True])
 async def test_query_rules_nosettings(metadata: bool, app_client, setup_rules):
-    res = await app_client.post('/api/v1/rules/query', data=json.dumps({
-        'setting_names': [],
-        'context_features_options': '*',
-        'include_metadata': metadata
-    }))
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': '',
+        'include_metadata': str(metadata)
+    })
+    res.raise_for_status()
 
-    expected = {'rules': {}}
+    expected = {'settings': {}}
 
     assert res.json() == expected
 
 
 @mark.asyncio
 @mark.parametrize('metadata', [False, True])
-async def test_query_rules_bad_cache_future(metadata: bool, app_client, setup_rules, mk_rule):
-    future_time = datetime.utcnow() + timedelta(hours=2)
-    # touch a to change its last_touch_time
-    await mk_rule('a', {'theme': 'grey', 'user': 'admin'}, 8)
+async def test_query_rules_allsettings_no_filter(metadata: bool, app_client, setup_rules):
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'include_metadata': str(metadata)
+    })
+    res.raise_for_status()
 
-    res = await app_client.get('/api/v1/rules/query', data=json.dumps({
-        'setting_names': ['a', 'long_setting_name'],
-        'context_features_options': {'trust': ['full', 'part'], 'theme': ['black']},
-        'include_metadata': metadata,
-        'cache_time': future_time.isoformat(),
-    }))
-    assert res.status_code == 422
+    expected = {'settings': {
+        'a': {'rules': [
+            {'context_features': [['trust', 'full']], 'value': 1, 'rule_id': 1},
+            {'context_features': [['theme', 'black']], 'value': 2, 'rule_id': 2},
+            {'context_features': [['trust', 'full'], ['theme', 'black']], 'value': 3, 'rule_id': 3},
+            {'context_features': [['user', 'admin'], ['theme', 'black']], 'value': 7, 'rule_id': 7},
+        ]},
+        'b': {'rules': [
+            {'context_features': [['trust', 'full']], 'value': 6, 'rule_id': 6},
+        ]},
+        'long_setting_name': {'rules': [
+            {'context_features': [['trust', 'none']], 'value': 4, 'rule_id': 4},
+            {'context_features': [['trust', 'part']], 'value': 5, 'rule_id': 5},
+        ]}
+    }}
+
+    if metadata:
+        patch_rule_expectation_with_metadata(expected)
+
+    assert res.json() == expected
+
+
+@mark.asyncio
+@mark.parametrize('metadata', [False, True])
+async def test_query_rules_allsettings_with_filter(metadata: bool, app_client, setup_rules):
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'context_filters': 'user:*,trust:(full),theme:(blue)',
+        'include_metadata': str(metadata)
+    })
+    res.raise_for_status()
+
+    expected = {'settings': {
+        'a': {'rules': [
+            {'context_features': [['trust', 'full']], 'value': 1, 'rule_id': 1},
+        ]},
+        'b': {'rules': [
+            {'context_features': [['trust', 'full']], 'value': 6, 'rule_id': 6},
+        ]},
+        'long_setting_name': {'rules': []}
+    }}
+
+    if metadata:
+        patch_rule_expectation_with_metadata(expected)
+
+    assert res.json() == expected
 
 
 @fixture(params=['deprecated', 'new'])
@@ -571,3 +534,63 @@ async def test_patch_rule_missing(patch_callback, app_client):
 async def test_patch_rule_bad_data(patch_callback, example_rule, app_client):
     res = await patch_callback(app_client, example_rule, ['d5'])
     assert res.status_code == 400
+
+
+@mark.asyncio
+@mark.parametrize('metadata', [False, True])
+async def test_query_etag(app_client, setup_rules, metadata):
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': 'theme:*,trust:(full,none)',
+        'include_metadata': str(metadata)
+    })
+    res.raise_for_status()
+
+    etag = res.headers['ETag']
+
+    repeat_resp = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': 'theme:*,trust:(full,none)',
+        'include_metadata': str(metadata)
+    }, headers={'If-None-Match': etag})
+
+    assert repeat_resp.status_code == 304
+    assert repeat_resp.headers['ETag'] == etag
+    assert repeat_resp.content == b'{"detail":"Not Modified"}'
+
+
+@mark.asyncio
+@mark.parametrize('metadata', [False, True])
+async def test_query_wrong_etag(app_client, setup_rules, metadata):
+    res = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': 'theme:*,trust:(full,none)',
+        'include_metadata': str(metadata)
+    })
+    res.raise_for_status()
+
+    etag = res.headers['ETag']
+    wrong_etag = etag[:5] + '%' + etag[5:]
+
+    repeat_resp = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': 'theme:*,trust:(full,none)',
+        'include_metadata': str(metadata)
+    }, headers={'If-None-Match': wrong_etag})
+
+    assert repeat_resp.status_code == 200
+    assert repeat_resp.headers['ETag'] == etag
+    assert repeat_resp.content
+
+
+@mark.asyncio
+@mark.parametrize('metadata', [False, True])
+async def test_query_etag(app_client, setup_rules, metadata):
+    repeat_resp = await app_client.get('/api/v1/rules/query', query_string={
+        'settings': 'a,long_setting_name',
+        'context_filters': 'theme:*,trust:(full,none)',
+        'include_metadata': str(metadata)
+    }, headers={'If-None-Match': '*'})
+
+    assert repeat_resp.status_code == 304
+    assert repeat_resp.content == b'{"detail":"Not Modified"}'

@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime
 from itertools import groupby
 from operator import itemgetter
 from typing import Any, Dict, List, Mapping, NamedTuple, Optional, Sequence, Tuple
 
 import orjson
+from requests import Request
 from sqlalchemy import and_, func, join, not_, select, tuple_
 
 from heksher.db_logic.logic_base import DBLogicBase
-from heksher.db_logic.metadata import conditions, context_features, rule_metadata, rules, settings
+from heksher.db_logic.metadata import conditions, context_features, rule_metadata, rules
 
 
 class RuleSpec(NamedTuple):
@@ -194,7 +194,6 @@ class RuleMixin(DBLogicBase):
 
     async def query_rules(self, setting_names: List[str],
                           feature_value_options: Optional[Dict[str, Optional[List[str]]]],
-                          setting_touch_time_cutoff: Optional[datetime],
                           include_metadata: bool) -> Dict[str, List[InnerRuleSpec]]:
         """
         Search the rules of multiple settings
@@ -211,23 +210,11 @@ class RuleMixin(DBLogicBase):
             A mapping of non-filtered settings to rules
 
         """
-        if setting_touch_time_cutoff:
-            async with self.db_engine.connect() as conn:
-                settings_results = (await conn.execute(
-                    select([settings.c.name])
-                    .where(
-                        settings.c.name.in_(setting_names)
-                        & (settings.c.last_touch_time >= setting_touch_time_cutoff)
-                    )
-                )).scalars().all()
-        else:
-            settings_results = setting_names
-
         applicable_rules: Dict[int, Tuple[Tuple[str, str], ...]] = {}
         conditions_ = conditions.alias()
 
-        if not settings_results:
-            # shortcut in case all settings are up-to-date
+        if not setting_names:
+            # shortcut in case no settings are selected
             rule_results = []
         else:
             # inv_match is a mixin condition, if an exact-match condition returns True for it, the rule associated with
@@ -255,22 +242,22 @@ class RuleMixin(DBLogicBase):
                 else:
                     inv_match = tuple_conditions if exact_tuple_conditions else cf_conditions
 
-            settings_container = [name for name in settings_results]
+            clauses = [
+                not_(conditions_.select()
+                     .where(
+                    and_(
+                        conditions.c.rule == conditions_.c.rule, inv_match
+                    ))
+                     .exists()),
+            ]
+            if setting_names is not None:
+                clauses.append(rules.c.setting.in_(setting_names))
 
             query = (select()
                      .add_columns(rules.c.id, conditions.c.context_feature, conditions.c.feature_value)
                      .select_from(rules.outerjoin(conditions, rules.c.id == conditions.c.rule))
                      .outerjoin(context_features, context_features.c.name == conditions.c.context_feature)
-                     .where(
-                and_(rules.c.setting.in_(settings_container),
-                     not_(conditions_.select()
-                          .where(
-                         and_(
-                             conditions.c.rule == conditions_.c.rule, inv_match
-                         ))
-                          .exists())
-                     )
-            )
+                     .where(*clauses)
                      .order_by(rules.c.id, context_features.c.index))
 
             async with self.db_engine.connect() as conn:
@@ -290,7 +277,7 @@ class RuleMixin(DBLogicBase):
             rule_query = (
                 select([rules.c.id, rules.c.setting, rules.c.value])
                 .where(rules.c.id.in_(applicable_rules))
-                .order_by(rules.c.setting)
+                .order_by(rules.c.setting, rules.c.id)
             )
             async with self.db_engine.connect() as conn:
                 rule_results = (await conn.execute(rule_query)).mappings().all()
@@ -308,8 +295,7 @@ class RuleMixin(DBLogicBase):
                 else:
                     metadata = None
 
-        ret = {}
-        missing_settings = set(settings_results)
+        ret: Dict[str, List[InnerRuleSpec]] = {setting: [] for setting in setting_names}
         for setting, rows in groupby(rule_results, key=itemgetter('setting')):
             rule_list = [
                 InnerRuleSpec(
@@ -321,9 +307,6 @@ class RuleMixin(DBLogicBase):
                 for row in rows
             ]
             ret[setting] = rule_list
-            missing_settings.remove(setting)
-        for setting in missing_settings:
-            ret[setting] = []
         return ret
 
     async def get_rules_for_setting(self, setting_name: str) -> Sequence[BareRuleSpec]:

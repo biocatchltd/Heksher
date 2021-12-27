@@ -87,12 +87,11 @@ async def patch_context_feature(name: str, input: Union[PatchAfterContextFeature
     target_index = await app.db_logic.get_context_feature_index(input.target)
     if index_to_move is None or target_index is None:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
+    if isinstance(input, PatchBeforeContextFeatureInput):
+        target_index -= 1
     if index_to_move == target_index:
         return None
-    if isinstance(input, PatchAfterContextFeatureInput):
-        await app.db_logic.move_after_context_feature(index_to_move, target_index)
-    else:  # move before target
-        await app.db_logic.move_after_context_feature(index_to_move, target_index - 1)
+    await app.db_logic.move_after_context_feature(index_to_move, target_index)
 
 
 class AddContextFeatureInput(ORJSONModel):
