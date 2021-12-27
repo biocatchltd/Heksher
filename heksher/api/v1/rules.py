@@ -2,15 +2,14 @@ import re
 from logging import getLogger
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from fastapi import APIRouter, Query, Response, HTTPException
-from fastapi.responses import ORJSONResponse
+from fastapi import APIRouter, Query, Response
 from pydantic import Field, validator
 from starlette import status
 from starlette.requests import Request
-from starlette.responses import PlainTextResponse, JSONResponse
+from starlette.responses import PlainTextResponse
 
 from heksher.api.v1.rules_metadata import router as metadata_router
-from heksher.api.v1.util import ORJSONModel, application, router as v1_router, handle_etag, PydanticResponse
+from heksher.api.v1.util import ORJSONModel, PydanticResponse, application, handle_etag, router as v1_router
 from heksher.api.v1.validation import ContextFeatureName, ContextFeatureValue, MetadataKey, SettingName
 from heksher.app import HeksherApp
 from heksher.setting import Setting
@@ -223,7 +222,7 @@ async def query_rules(request: Request, app: HeksherApp = application,
                                      status_code=status.HTTP_404_NOT_FOUND)
     results = await app.db_logic.query_rules(settings, context_features_options, include_metadata)
     if include_metadata:
-        ret = QueryRulesOutputWithMetadata(
+        ret: Union[QueryRulesOutputWithMetadata, QueryRulesOutput] = QueryRulesOutputWithMetadata(
             settings={
                 setting:
                     QueryRulesOutputWithMetadata_Setting(rules=[

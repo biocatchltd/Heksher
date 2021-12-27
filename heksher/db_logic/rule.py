@@ -5,7 +5,6 @@ from operator import itemgetter
 from typing import Any, Dict, List, Mapping, NamedTuple, Optional, Sequence, Tuple
 
 import orjson
-from requests import Request
 from sqlalchemy import and_, func, join, not_, select, tuple_
 
 from heksher.db_logic.logic_base import DBLogicBase

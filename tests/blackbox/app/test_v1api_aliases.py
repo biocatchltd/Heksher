@@ -1,5 +1,5 @@
 import json
-from typing import Iterable, Optional
+from typing import Optional
 
 from pytest import fixture, mark, raises
 from requests import HTTPError

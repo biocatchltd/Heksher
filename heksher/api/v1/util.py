@@ -3,9 +3,9 @@ from __future__ import annotations
 from hashlib import md5
 
 import orjson
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from starlette.responses import Response, JSONResponse
+from starlette.responses import JSONResponse, Response
 
 
 def orjson_dumps(v, **kwargs):
@@ -51,7 +51,7 @@ def handle_etag(response: Response, request: Request):
     if if_none_match is None:
         return
     if if_none_match == '*' or response_etag in if_none_match:
-        raise HTTPException(status_code=304, headers=response.headers)
+        raise HTTPException(status_code=304, headers=response.headers)  # type: ignore[arg-type]
 
 
 router = APIRouter(prefix='/api/v1')

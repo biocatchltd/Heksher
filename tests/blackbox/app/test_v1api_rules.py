@@ -1,5 +1,4 @@
 import json
-from datetime import datetime, timedelta
 from itertools import chain
 
 from pytest import fixture, mark
@@ -585,7 +584,7 @@ async def test_query_wrong_etag(app_client, setup_rules, metadata):
 
 @mark.asyncio
 @mark.parametrize('metadata', [False, True])
-async def test_query_etag(app_client, setup_rules, metadata):
+async def test_query_etag_wildcard(app_client, setup_rules, metadata):
     repeat_resp = await app_client.get('/api/v1/rules/query', query_string={
         'settings': 'a,long_setting_name',
         'context_filters': 'theme:*,trust:(full,none)',
