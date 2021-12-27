@@ -1,1 +1,0 @@
-python -m pytest tests/unittests -s -x --cov=heksher --cov-report=xml --cov-report=term-missing
