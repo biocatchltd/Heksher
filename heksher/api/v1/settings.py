@@ -1,4 +1,3 @@
-from datetime import datetime
 from logging import getLogger
 from typing import Any, Dict, List, Optional, Union
 
@@ -91,7 +90,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
         await app.db_logic.add_setting(new_setting, alias=input.alias)
         return DeclareSettingOutput(created=True, changed=[], incomplete={})
 
-    to_change: Dict[str, Any] = {'last_touch_time': datetime.utcnow()}
+    to_change: Dict[str, Any] = {}
     changed = []
     incomplete: Dict[str, Any] = {}
 
@@ -131,11 +130,13 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
         to_change['default_value'] = str(orjson.dumps(new_setting.default_value), 'utf-8')
         changed.append('default_value')
 
+    is_new_alias = False
     if input.alias and input.alias not in existing.aliases:
         if alias_canonical_name and alias_canonical_name != existing.name:
             return PlainTextResponse(f"alias '{input.alias}' used by another setting",
                                      status_code=status.HTTP_409_CONFLICT)
         changed.append('alias')
+        is_new_alias = True
 
     # we need to get which metadata keys are changed
     metadata_changed = existing.metadata.keys() ^ new_setting.metadata.keys()
@@ -150,7 +151,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     else:
         new_metadata = None
 
-    if to_change or new_configurable_features:
+    if to_change or new_configurable_features or is_new_alias:
         await app.db_logic.update_setting(existing.name, to_change, new_configurable_features, new_metadata,
                                           input.alias)
     return DeclareSettingOutput(created=False, changed=changed, incomplete=incomplete)
@@ -328,7 +329,6 @@ async def rename_setting(name: str, input: RenameSettingInput, app: HeksherApp =
             return PlainTextResponse('name already exists', status_code=status.HTTP_409_CONFLICT)
 
     await app.db_logic.rename_setting(canonical_name, input.name)
-    await app.db_logic.touch_setting(input.name)
     return None
 
 

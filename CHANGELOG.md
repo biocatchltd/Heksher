@@ -1,14 +1,23 @@
 # Heksher Changelog
-## Next
+## Next  (REQ alembic upgrade)
+### Removed
+* old api endpoint POST /api/v1/rules/query has been removed and replaced with GET /api/v1/rules/query
+### Changed
+* the rename api endpoint has been changed to PUT /api/v1/<name>/name
+* the method of the endpoint /api/v1/rules/search has been changed to GET.
+### Deprecated
+* The api endpoint PATCH /api/v1/rules/<rule> to change a rule's value is now deprecated, new users
+  should use PUT /api/v1/rules/<rule>/value
 ### Added
 * declarations are now tolerant of subtypes (to account for previous type upgrade)
 * documentation
 * The api endpoint PUT /api/v1/rules/<rule>/value to change a rule's value
-### Changed
-* the rename api endpoint has been changed to PUT /api/v1/<name>/name
-### Deprecated
-* The api endpoint PATCH /api/v1/rules/<rule> to change a rule's value is now deprecated, new users
-  should use PUT /api/v1/rules/<rule>/value
+* The api endpoint GET /api/v1/rules/query to query rules (replaces the old query endpoint)
+### Fixed
+* A bug where patching a context feature's index using "to_before" would use the incorrect target.
+### Internal
+* a new script to test and correctly report coverage
+* tools/mk_revision.py to easily create alembic revisions
 ## 0.4.1
 ### Removed
 * removed the alembic extra, it's now a requirement 

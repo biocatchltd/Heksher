@@ -1,4 +1,4 @@
-from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, MetaData, String, Table, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, Integer, MetaData, String, Table, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 
 metadata = MetaData()
@@ -7,7 +7,6 @@ settings = Table('settings', metadata,
                  Column('name', String, primary_key=True),
                  Column('type', String, nullable=False),
                  Column('default_value', String, nullable=True),
-                 Column('last_touch_time', TIMESTAMP(), nullable=False),
                  )
 
 context_features = Table('context_features', metadata,

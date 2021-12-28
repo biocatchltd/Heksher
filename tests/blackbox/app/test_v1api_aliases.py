@@ -1,5 +1,5 @@
 import json
-from typing import Iterable, Optional
+from typing import Optional
 
 from pytest import fixture, mark, raises
 from requests import HTTPError
@@ -75,16 +75,16 @@ async def test_rules(app_client, default_declare_params):
         })))
 
     async def search(setting: str, theme: str):
-        return _get_ok_data(await app_client.post('/api/v1/rules/search', data=json.dumps({
+        return _get_ok_data(await app_client.get('/api/v1/rules/search', query_string={
             'setting': setting,
-            'feature_values': {'theme': theme},
-        })))
+            'feature_values': f'theme:{theme}',
+        }))
 
-    async def query(*settings: Iterable[str]):
-        return _get_ok_data(await app_client.post('/api/v1/rules/query', data=json.dumps({
-            'setting_names': settings,
-            'context_features_options': "*",
-        })))
+    async def query(*settings: str):
+        return _get_ok_data(await app_client.get('/api/v1/rules/query', query_string={
+            'settings': ','.join(settings),
+            'context_filters': "*",
+        }))
 
     default_declare_params.update({'name': 'cat', 'alias': 'hatul'})
     resp = await app_client.put('/api/v1/settings/declare', data=json.dumps(default_declare_params))
@@ -101,10 +101,10 @@ async def test_rules(app_client, default_declare_params):
     assert (await search("kelev", "dracula"))["rule_id"] == kelev_rule
     with raises(HTTPError):
         await query("cat", "kelev", "yanshuf")
-    assert (await query("cat", "kelev"))['rules'] == {
-        'cat': [{'value': 10, 'context_features': [['theme', 'bright']], 'rule_id': cat_rule},
-                {'value': 10, 'context_features': [['theme', 'dark']], 'rule_id': hatul_rule}],
-        'dog': [{'value': 10, 'context_features': [['theme', 'dracula']], 'rule_id': kelev_rule}]
+    assert (await query("cat", "kelev"))['settings'] == {
+        'cat': {'rules': [{'value': 10, 'context_features': [['theme', 'bright']], 'rule_id': cat_rule},
+                          {'value': 10, 'context_features': [['theme', 'dark']], 'rule_id': hatul_rule}]},
+        'dog': {'rules': [{'value': 10, 'context_features': [['theme', 'dracula']], 'rule_id': kelev_rule}]}
     }
 
 

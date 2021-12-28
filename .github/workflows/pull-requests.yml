@@ -28,9 +28,7 @@ jobs:
       uses: docker-practice/actions-setup-docker@0.0.1
     - name: Linting
       run: poetry run sh scripts/lint.sh
-    - name: Run unittests
-      run: poetry run sh scripts/unittest.sh
-    - name: Run blackbox tests
-      run: poetry run sh scripts/blackbox_test.sh
+    - name: Run unittests + app tests
+      run: poetry run sh scripts/coverage.sh
     - name: Run image test
       run: poetry run sh scripts/image_test.sh
