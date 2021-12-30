@@ -47,7 +47,7 @@ async def test_post_not_existing_setting_metadata(app_client):
 
 @mark.asyncio
 async def test_post_setting_first_metadata(app_client):
-    await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'test_setting',
         'configurable_features': ['user'],
         'type': 'int',
@@ -195,7 +195,7 @@ async def test_get_setting_metadata(size_limit_setting, app_client):
 
 @mark.asyncio
 async def test_get_setting_no_metadata(app_client):
-    await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'test_setting',
         'configurable_features': ['user'],
         'type': 'int',

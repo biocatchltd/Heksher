@@ -45,7 +45,7 @@ async def test_post_not_existing_rule_metadata(app_client):
 
 @mark.asyncio
 async def test_post_rule_first_metadata(example_rule, app_client):
-    await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'test_setting',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
@@ -196,7 +196,7 @@ async def test_get_rule_metadata(example_rule, app_client):
 
 @mark.asyncio
 async def test_get_rule_no_metadata(app_client):
-    await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'test_setting',
         'configurable_features': ['theme', 'user'],
         'type': 'int'

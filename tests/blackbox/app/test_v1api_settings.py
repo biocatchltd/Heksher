@@ -21,7 +21,7 @@ async def test_declare_new_setting(size_limit_setting, app_client):
 @mark.asyncio
 @mark.parametrize('type_', [15, 'Flags{1,2,3}', 'enum[1,2,3]', 'Flags[[0]]', 'Flags[]'])
 async def test_declare_new_setting_bad_type(app_client, type_):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': type_,
@@ -33,7 +33,7 @@ async def test_declare_new_setting_bad_type(app_client, type_):
 
 @mark.asyncio
 async def test_declare_new_setting_bad_default(app_client):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
@@ -45,31 +45,32 @@ async def test_declare_new_setting_bad_default(app_client):
 
 @mark.asyncio
 async def test_declare_new_setting_bad_cf(app_client):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme', 'color'],
         'type': 'int',
         'default_value': 200,
         'metadata': {'testing': True}
     }))
-    assert res.status_code == 422
+    assert res.status_code == 404
 
 
 @mark.asyncio
 async def test_declare_new_setting_modify_bad_cf(size_limit_setting, app_client):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme', 'color'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {'testing': True}
+        'metadata': {'testing': True},
+        'version': '2.0',
     }))
-    assert res.status_code == 422
+    assert res.status_code == 404
 
 
 @mark.asyncio
 async def test_declare_no_modify(size_limit_setting, app_client):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
@@ -78,45 +79,37 @@ async def test_declare_no_modify(size_limit_setting, app_client):
     }))
     res.raise_for_status()
     assert res.json() == {
-        'created': False,
-        'changed': [],
-        'incomplete': {}
+        'outcome': 'uptodate',
     }
 
 
 @mark.asyncio
 async def test_declare_modify(app_client):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user'],
         'type': 'int',
         'default_value': 200,
-        'metadata': {'testing': True, 'ctr': 1, 'dummy': 2}
+        'metadata': {'testing': True, 'ctr': 1, 'dummy': 2},
+        'version': '1.0',
     }))
     res.raise_for_status()
-    assert res.json() == {
-        'created': True,
-        'changed': [],
-        'incomplete': {}
-    }
+    assert res.json() == {'outcome': 'created',}
 
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
         'default_value': 300,
-        'metadata': {'testing': True, 'ctr': 2}
+        'metadata': {'testing': True, 'ctr': 2},
+        'version': '2.0',
     }))
     res.raise_for_status()
-    assert res.json() == {
-        'created': False,
-        'changed': [
-            'configurable_features',
-            'default_value',
-            'metadata.ctr',
-            'metadata.dummy',
-        ],
-        'incomplete': {}
+    resp_body = res.json()
+    assert len(resp_body.pop('differences')) == 4
+    assert resp_body == {
+        'outcome': 'upgraded',
+        'previous_version': '1.0',
     }
 
     res = await app_client.get('/api/v1/settings/size_limit')
@@ -133,7 +126,7 @@ async def test_declare_modify(app_client):
 
 @mark.asyncio
 async def test_declare_conflict(size_limit_setting, app_client):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': 'str',
@@ -146,7 +139,7 @@ async def test_declare_conflict(size_limit_setting, app_client):
 @mark.asyncio
 async def test_declare_type_upgrade(size_limit_setting, app_client):
     upgraded_type = 'float'
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': upgraded_type,
@@ -170,7 +163,7 @@ async def test_declare_type_upgrade(size_limit_setting, app_client):
 
 @mark.asyncio
 async def test_declare_incomplete(size_limit_setting, app_client):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user'],
         'type': 'int',
@@ -237,7 +230,7 @@ async def test_delete_setting_missing(size_limit_setting, app_client):
 @mark.parametrize('additional_data', [False, None])
 async def test_get_settings(app_client, additional_data):
     async def mk_setting(name: str):
-        res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+        res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
             'name': name,
             'configurable_features': [],
             'type': 'int'
@@ -271,7 +264,7 @@ async def test_get_settings(app_client, additional_data):
 @mark.asyncio
 async def test_get_settings_additional_data(app_client):
     async def mk_setting(name: str, type: str):
-        res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+        res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
             'name': name,
             'configurable_features': ['theme', 'user'],
             'type': type
@@ -305,7 +298,7 @@ async def test_get_settings_additional_data(app_client):
 
 @fixture
 async def interval_setting(app_client):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'interval',
         'configurable_features': ['user', 'theme'],
         'type': 'float',
@@ -410,7 +403,7 @@ async def test_type_downgrade_missing(interval_setting, app_client, new_type):
 
 @mark.asyncio
 async def test_type_downgrade_with_rules_enum(app_client):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'background_color',
         'configurable_features': ['theme'],
         'type': 'Enum["red", "blue", "green"]',
@@ -455,7 +448,7 @@ async def test_type_downgrade_with_rules_enum(app_client):
 
 @mark.asyncio
 async def test_type_downgrade_with_rules_enum_bad(app_client):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'background_color',
         'configurable_features': ['theme'],
         'type': 'Enum["red", "blue", "green"]',
@@ -503,7 +496,7 @@ async def test_type_downgrade_with_rules_enum_bad(app_client):
     ('A1', 'Z'),
 ])
 async def test_rename_setting(app_client, old, new):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'A',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
@@ -527,7 +520,7 @@ async def test_rename_setting(app_client, old, new):
     ('A1', 'A'),
 ])
 async def test_rename_setting_no_action_needed(app_client, old, new):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'A',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
@@ -551,7 +544,7 @@ async def test_rename_setting_no_action_needed(app_client, old, new):
     ('A1', 'A1'),
 ])
 async def test_rename_setting_to_alias(app_client, old, new):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'A',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
@@ -577,7 +570,7 @@ async def test_rename_setting_to_alias(app_client, old, new):
     ('A1', 'B1'),
 ])
 async def test_rename_setting_existing(app_client, old, new):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'A',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
@@ -586,7 +579,7 @@ async def test_rename_setting_existing(app_client, old, new):
         'alias': 'A1'
     }))
     res.raise_for_status()
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'B',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
@@ -619,7 +612,7 @@ async def test_rename_setting_not_existing(app_client):
 
 @mark.asyncio
 async def test_rename_setting_cascade(app_client):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'A',
         'configurable_features': ['user', 'theme'],
         'type': 'int',

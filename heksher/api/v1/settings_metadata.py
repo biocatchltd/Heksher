@@ -25,7 +25,8 @@ async def update_setting_metadata(name: str, input: InputSettingMetadata, app: H
     """
     if not input.metadata:
         return None
-    setting = await app.db_logic.get_setting(name, include_metadata=False)
+    setting = await app.db_logic.get_setting(name, include_metadata=False, include_aliases=False,
+                                             include_configurable_features=False)
     if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
     await app.db_logic.update_setting_metadata(setting.name, input.metadata)
@@ -36,7 +37,8 @@ async def replace_setting_metadata(name: str, input: InputSettingMetadata, app: 
     """
     Change the current metadata of the setting.
     """
-    setting = await app.db_logic.get_setting(name, include_metadata=False)
+    setting = await app.db_logic.get_setting(name, include_metadata=False, include_aliases=False,
+                                             include_configurable_features=False)
     if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
     if not input.metadata:
@@ -56,7 +58,8 @@ async def update_setting_metadata_key(name: str, key: MetadataKey, input: PutSet
     """
     Updates the current metadata of the setting. Existing keys won't be deleted.
     """
-    setting = await app.db_logic.get_setting(name, include_metadata=False)
+    setting = await app.db_logic.get_setting(name, include_metadata=False, include_aliases=False,
+                                             include_configurable_features=False)
     if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
     await app.db_logic.update_setting_metadata_key(setting.name, key, input.value)
@@ -67,7 +70,8 @@ async def delete_setting_metadata(name: str, app: HeksherApp = application):
     """
     Delete a setting's metadata.
     """
-    setting = await app.db_logic.get_setting(name, include_metadata=False)
+    setting = await app.db_logic.get_setting(name, include_metadata=False, include_aliases=False,
+                                             include_configurable_features=False)
     if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
     await app.db_logic.delete_setting_metadata(setting.name)
@@ -78,7 +82,8 @@ async def delete_rule_key_from_metadata(name: str, key: MetadataKey, app: Hekshe
     """
     Delete a specific key from the setting's metadata.
     """
-    setting = await app.db_logic.get_setting(name, include_metadata=False)
+    setting = await app.db_logic.get_setting(name, include_metadata=False, include_aliases=False,
+                                             include_configurable_features=False)
     if not setting:
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
     await app.db_logic.delete_setting_metadata_key(setting.name, key)
@@ -99,6 +104,7 @@ async def get_setting_metadata(name: str, app: HeksherApp = application):
     """
     Get metadata of a setting.
     """
-    if not (setting := await app.db_logic.get_setting(name, include_metadata=True)):
+    if not (setting := await app.db_logic.get_setting(name, include_metadata=True, include_aliases=False,
+                                                      include_configurable_features=False)):
         return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)
     return GetSettingMetadataOutput(metadata=setting.metadata)

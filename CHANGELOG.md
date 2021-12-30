@@ -3,8 +3,10 @@
 ### Removed
 * old api endpoint POST /api/v1/rules/query has been removed and replaced with GET /api/v1/rules/query
 ### Changed
-* the rename api endpoint has been changed to PUT /api/v1/<name>/name
+* the rename api endpoint has been changed to PUT /api/v1/<name>/name.
 * the method of the endpoint /api/v1/rules/search has been changed to GET.
+* All setting now must have a default value.
+* Setting declarations are now versioned.
 ### Deprecated
 * The api endpoint PATCH /api/v1/rules/<rule> to change a rule's value is now deprecated, new users
   should use PUT /api/v1/rules/<rule>/value
@@ -13,6 +15,7 @@
 * documentation
 * The api endpoint PUT /api/v1/rules/<rule>/value to change a rule's value
 * The api endpoint GET /api/v1/rules/query to query rules (replaces the old query endpoint)
+* POST /api/v1/rules now returns the rule location in the header
 ### Fixed
 * A bug where patching a context feature's index using "to_before" would use the incorrect target.
 ### Internal
