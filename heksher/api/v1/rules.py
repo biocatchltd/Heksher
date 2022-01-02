@@ -62,7 +62,7 @@ class AddRuleInput(ORJSONModel):
     setting: SettingName = Field(description="the setting name the rule should apply to")
     feature_values: Dict[ContextFeatureName, ContextFeatureValue] = \
         Field(description="the exact-match conditions of the rule")
-    value: Any = Field(description="the value of the setting in contexts that match the rule")
+    value: Any = Field(..., description="the value of the setting in contexts that match the rule")
     metadata: Dict[MetadataKey, Any] = Field(default_factory=dict, description="additional metadata of the rule")
 
     @validator('feature_values')
@@ -107,7 +107,7 @@ async def add_rule(input: AddRuleInput, app: HeksherApp = application):
 
 
 class PatchRuleInput(ORJSONModel):
-    value: Any = Field(description="the value of the setting in contexts that match the rule")
+    value: Any = Field(..., description="the value of the setting in contexts that match the rule")
 
 
 @router.patch('/{rule_id}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
@@ -194,7 +194,9 @@ async def query_rules(request: Request, app: HeksherApp = application,
                                                                         " response"),
                       ):
     if raw_settings is None:
-        settings = await app.db_logic.get_all_settings_names()
+        settings = [spec.name for spec in await app.db_logic.get_all_settings(include_configurable_features=False,
+                                                                              include_aliases=False,
+                                                                              include_metadata=False)]
     elif not raw_settings:
         settings = []
     else:

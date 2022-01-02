@@ -151,7 +151,8 @@ def mk_setting(app_client):
         res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
             'name': name,
             'configurable_features': ['theme', 'trust', 'user'],
-            'type': 'int'
+            'type': 'int',
+            'default_value': 0,
         }))
         res.raise_for_status()
         assert res.json() == {'outcome': 'created'}

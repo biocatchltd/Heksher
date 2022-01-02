@@ -46,7 +46,7 @@ async def test_settings(app_client, default_declare_params, first_version):
     res = await declare('yahweh', 'god', '2.0')
     assert res['outcome'] == 'upgraded'
     assert res['previous_version'] == '1.1'
-    assert sum(diff.startswith('rename') for diff in res['differences']) == 1
+    assert sum(diff.get('attribute') == 'name' for diff in res['differences']) == 1
     res = await get('yahweh')
     assert res['name'] == "yahweh"
     assert res['aliases'] == ["elohim", "god"]
@@ -116,23 +116,23 @@ async def test_metadata(app_client, default_declare_params):
     _get_ok_data(await app_client.post('/api/v1/settings/declare', data=json.dumps(default_declare_params)))
 
     assert await get() == {'testing': True}
-    resp = await app_client.post('/api/v1/settings/yayin/metadata', data=json.dumps({"metadata": {"alcohol": "6%"}}))
+    resp = await app_client.post('/api/v1/settings/yayin/metadata', data=json.dumps({"metadata": {"alcohol": "6%"}, 'version': '1.2'}))
     resp.raise_for_status()
     assert await get() == {'testing': True, "alcohol": "6%"}
     resp = await app_client.put('/api/v1/settings/yayin/metadata', data=json.dumps({"metadata": {
         "price": 50,
         "experimenting": True,
         "should_drink": True,
-    }}))
+    }, "version": "1.3"}))
     resp.raise_for_status()
     assert await get() == {"price": 50, "experimenting": True, "should_drink": True}
-    resp = await app_client.put('/api/v1/settings/yayin/metadata/should_drink', data=json.dumps({"value": False}))
+    resp = await app_client.put('/api/v1/settings/yayin/metadata/should_drink', data=json.dumps({"value": False, 'version': '1.4'}))
     resp.raise_for_status()
     assert await get() == {"price": 50, "experimenting": True, "should_drink": False}
-    resp = await app_client.delete('/api/v1/settings/yayin/metadata/should_drink')
+    resp = await app_client.delete('/api/v1/settings/yayin/metadata/should_drink', data=json.dumps({"version": "1.5"}))
     resp.raise_for_status()
     assert await get() == {"price": 50, "experimenting": True}
-    resp = await app_client.delete('/api/v1/settings/yayin/metadata')
+    resp = await app_client.delete('/api/v1/settings/yayin/metadata', data=json.dumps({"version": "1.6"}))
     resp.raise_for_status()
     assert await get() == {}
 

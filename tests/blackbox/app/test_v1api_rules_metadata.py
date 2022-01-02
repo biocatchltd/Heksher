@@ -199,7 +199,8 @@ async def test_get_rule_no_metadata(app_client):
     await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'test_setting',
         'configurable_features': ['theme', 'user'],
-        'type': 'int'
+        'type': 'int',
+        'default_value': 10
     }))
 
     post_rule_rep = await app_client.post('/api/v1/rules', data=json.dumps({
