@@ -125,10 +125,12 @@ async def declare_setting_endpoint(input: DeclareSettingInput, app: HeksherApp =
         alias_canonical_name = (await app.db_logic.get_canonical_names([input.alias]))[input.alias]
         if alias_canonical_name is None:
             raise HTTPException(status_code=404, detail=f'alias {input.alias} does not exist')
-        # we only accept two options: either the alias is a canonical name and existing does nt exist, or it is an
-        # existing alias of the existing setting
-        if (existing or input.alias != alias_canonical_name) and (
-                not existing or existing.name != alias_canonical_name):
+        # we only accept two options: either the setting does not exist and the alias is a canonical name, or it is an
+        # existing alias of the setting
+        if not (
+                (not existing and input.alias == alias_canonical_name)
+                or (existing and existing.name == alias_canonical_name)
+        ):
             raise HTTPException(status_code=409, detail=f'alias {input.alias} is an alias of unrelated setting '
                                                         f'{alias_canonical_name}')
     else:

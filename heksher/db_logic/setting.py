@@ -122,12 +122,10 @@ class SettingMixin(DBLogicBase):
             else:
                 metadata_ = None
 
-        raw_type = data_row['type']
-        raw_default_value = data_row['default_value']
         return SettingSpec(
             setting_name,
-            raw_type,
-            raw_default_value,
+            data_row['type'],
+            data_row['default_value'],
             metadata_,
             configurable_features,
             aliases,
@@ -297,12 +295,6 @@ class SettingMixin(DBLogicBase):
                                .values(type=str(new_type), version=new_version))
 
     async def rename_setting(self, old_name: str, new_name: str, new_version: str):
-        """
-        Change a canonical setting name to another one, adding the old one as an alias
-        Args:
-            old_name: The name of the setting to rename
-            new_name: The new name to set for the setting
-        """
         async with self.db_engine.begin() as conn:
             # this should cascade through all other tables
             await conn.execute(

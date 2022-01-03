@@ -49,5 +49,5 @@ the following changes:
 
 There are some changes that are never acceptable, as they would break the logic of the application. These are:
 
-* Changing a setting type to a value does not accept the value of a t least one rule of the setting.
+* Changing a setting type to a value that does not accept the value of at least one rule of the setting.
 * Removing configurable features that are matched by at least one rule of the setting.
