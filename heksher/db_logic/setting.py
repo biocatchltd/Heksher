@@ -1,24 +1,36 @@
+from dataclasses import dataclass
+from functools import cached_property
 from itertools import groupby
-from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import orjson
 from _operator import itemgetter
 from sqlalchemy import String, column, delete, join, or_, select, values
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 from heksher.db_logic.logic_base import DBLogicBase
 from heksher.db_logic.metadata import configurable, context_features, setting_aliases, setting_metadata, settings
-from heksher.setting import Setting
 from heksher.setting_types import SettingType, setting_type
 
 
-class SettingSpec(NamedTuple):
+@dataclass
+class SettingSpec:
     name: str
     raw_type: Optional[str]
-    default_value: Optional[Any]
+    raw_default_value: Any
     metadata: Optional[Dict[str, Any]]
     configurable_features: Optional[List[str]]
-    aliases: List[str]
+    aliases: Optional[List[str]]
+    version: str
+
+    @cached_property
+    def type(self) -> SettingType:
+        return setting_type(self.raw_type)
+
+    @cached_property
+    def default_value(self):
+        return orjson.loads(self.raw_default_value)
 
 
 class SettingMixin(DBLogicBase):
@@ -44,13 +56,14 @@ class SettingMixin(DBLogicBase):
                               isouter=True),
                          or_(settings.c.name == names_table.c.n, setting_aliases.c.alias == names_table.c.n),
                          isouter=True)
-                )
+                    )
                 .distinct()
             )
             results = (await conn.execute(stmt)).all()
         return dict(results)
 
-    async def get_setting(self, name_or_alias: str, *, include_metadata: bool) -> Optional[Setting]:
+    async def get_setting(self, name_or_alias: str, *, include_metadata: bool, include_aliases: bool,
+                          include_configurable_features: bool) -> Optional[SettingSpec]:
         """
         Args:
             name_or_alias: The name/alias of a setting
@@ -61,7 +74,7 @@ class SettingMixin(DBLogicBase):
         """
         async with self.db_engine.connect() as conn:
             stmt = (
-                select([settings.c.name, settings.c.type, settings.c.default_value])
+                select([settings.c.name, settings.c.type, settings.c.default_value, settings.c.version])
                 .select_from(
                     join(settings, setting_aliases, settings.c.name == setting_aliases.c.setting, isouter=True)
                 )
@@ -74,16 +87,31 @@ class SettingMixin(DBLogicBase):
                 return None
 
             setting_name = data_row['name']
-
-            stmt = (
-                select([configurable.c.context_feature])
-                .select_from(
-                    join(configurable, context_features, configurable.c.context_feature == context_features.c.name)
+            if include_aliases:
+                stmt = (
+                    select([setting_aliases.c.alias])
+                    .select_from(
+                        join(settings, setting_aliases, settings.c.name == setting_aliases.c.setting)
+                    )
+                    .where(settings.c.name == setting_name)
+                    .order_by(setting_aliases.c.alias)
                 )
-                .where(configurable.c.setting == setting_name)
-                .order_by(context_features.c.index)
-            )
-            configurable_rows = (await conn.execute(stmt)).scalars().all()
+                aliases = (await conn.execute(stmt)).scalars().all()
+            else:
+                aliases = None
+
+            if include_configurable_features:
+                stmt = (
+                    select([configurable.c.context_feature])
+                    .select_from(
+                        join(configurable, context_features, configurable.c.context_feature == context_features.c.name)
+                    )
+                    .where(configurable.c.setting == setting_name)
+                    .order_by(context_features.c.index)
+                )
+                configurable_features = (await conn.execute(stmt)).scalars().all()
+            else:
+                configurable_features = None
 
             if include_metadata:
                 stmt = (
@@ -94,17 +122,17 @@ class SettingMixin(DBLogicBase):
             else:
                 metadata_ = None
 
-        type_ = setting_type(data_row['type'])
-        default_value_ = orjson.loads(data_row['default_value'])
-        return Setting(
+        return SettingSpec(
             setting_name,
-            type_,
-            default_value_,
-            configurable_rows,
-            metadata_
+            data_row['type'],
+            data_row['default_value'],
+            metadata_,
+            configurable_features,
+            aliases,
+            data_row['version']
         )
 
-    async def add_setting(self, setting: Setting, alias: Optional[str] = None):
+    async def add_setting(self, setting: SettingSpec):
         """
         Add a setting to the DB
         Args:
@@ -116,6 +144,7 @@ class SettingMixin(DBLogicBase):
                     name=setting.name,
                     type=str(setting.type),
                     default_value=str(orjson.dumps(setting.default_value), 'utf-8'),
+                    version=setting.version
                 )
             )
             await conn.execute(
@@ -129,48 +158,52 @@ class SettingMixin(DBLogicBase):
                         [{'setting': setting.name, 'key': k, 'value': v} for (k, v) in setting.metadata.items()]
                     )
                 )
-            if alias:
-                await conn.execute(
-                    insert(setting_aliases).values(
-                        [{'setting': setting.name, 'alias': alias}]
-                    )
-                )
+            assert not setting.aliases  # newly added settings can't have aliases
 
-    async def update_setting(self, name: str, changed: Mapping[str, Any], new_contexts: Iterable[str],
-                             new_metadata: Optional[Dict[str, Any]], alias: Optional[str]):
-        """
-        Edit an existing setting in the DB
-        Args:
-            name: The name of the setting to edit
-            changed: The fields of the setting to change
-            new_contexts: An iterable of new context names to assign to the setting as configurable
-            new_metadata: Optional, new metadata to assign to the setting
-        """
+    async def update_setting(self, old_name: str, new_name: Optional[str], configurable_features: Optional[List[str]],
+                             type: Optional[SettingType], default_value: Optional[Any],
+                             metadata: Optional[Dict[str, Any]], version: str):
         async with self.db_engine.begin() as conn:
-            if changed:
+            if configurable_features is not None:
                 await conn.execute(
-                    settings.update().where(settings.c.name == name).values(**changed)
+                    configurable.delete().where(configurable.c.setting == old_name)
                 )
-            if new_contexts:
                 await conn.execute(
                     configurable.insert().values(
-                        [{'setting': name, 'context_feature': cf} for cf in new_contexts]
+                        [{'setting': old_name, 'context_feature': cf} for cf in configurable_features]
                     )
                 )
-            if new_metadata is not None:
+            if metadata is not None:
                 await conn.execute(
-                    setting_metadata.delete().where(setting_metadata.c.setting == name)
+                    setting_metadata.delete().where(setting_metadata.c.setting == old_name)
                 )
                 await conn.execute(
                     setting_metadata.insert().values(
-                        [{'setting': name, 'key': k, 'value': v} for (k, v) in new_metadata.items()]
+                        [{'setting': old_name, 'key': k, 'value': v} for (k, v) in metadata.items()]
                     )
                 )
-            if alias:
+
+            # we change the row last, so that the other tables can still refer to the setting by it's old name
+            row_changes = {'version': version}
+            if new_name:
+                row_changes['name'] = new_name
+            if type:
+                row_changes['type'] = str(type)
+            if default_value:
+                row_changes['default_value'] = str(orjson.dumps(default_value), 'utf-8')
+            await conn.execute(
+                settings.update().where(settings.c.name == old_name).values(**row_changes)
+            )
+
+            if new_name:
+                # remove the new name from the aliases table, if it exists
+                await conn.execute(
+                    setting_aliases.delete().where(setting_aliases.c.alias == new_name)
+                )
                 await conn.execute(
                     insert(setting_aliases).values(
-                        [{'setting': name, 'alias': alias}]
-                    ).on_conflict_do_nothing()
+                        [{'setting': new_name, 'alias': old_name}]
+                    )
                 )
 
     async def delete_setting(self, name: str) -> bool:
@@ -185,88 +218,72 @@ class SettingMixin(DBLogicBase):
             resp = (await conn.execute(settings.delete().where(settings.c.name == name))).rowcount
         return resp == 1
 
-    async def get_setting_full(self, name_or_alias: str) -> Optional[SettingSpec]:
-        """
-        Args:
-            name_or_alias: The name/alias of a setting
-        Returns:
-            The setting specs object for the setting in the DB with the same name, or None if it does not exist
-        """
-        setting = await self.get_setting(name_or_alias, include_metadata=True)
-
-        if not setting:
-            return None
-
-        async with self.db_engine.connect() as conn:
-            alias_rows = (await conn.execute(
-                select([setting_aliases.c.alias])
-                .where(setting_aliases.c.setting == setting.name)
-            )).scalars().all()
-
-        return SettingSpec(
-            setting.name,
-            str(setting.type),
-            setting.default_value,
-            setting.metadata,
-            list(setting.configurable_features),
-            list(alias_rows)
-        )
-
-    async def get_all_settings_full(self) -> List[SettingSpec]:
+    async def get_all_settings(self, include_configurable_features: bool, include_metadata: bool,
+                               include_aliases: bool) -> List[SettingSpec]:
         """
         Returns:
             A list of all setting specs in the DB
         """
-        select_query = select([settings.c.name, settings.c.type, settings.c.default_value]).order_by(settings.c.name)
+        select_query = select([settings.c.name, settings.c.type, settings.c.default_value, settings.c.version]) \
+            .order_by(settings.c.name)
 
         async with self.db_engine.connect() as conn:
             records = (await conn.execute(select_query)).mappings().all()
-            configurable_rows = (await conn.execute(
-                select([configurable.c.setting, configurable.c.context_feature])
-                .select_from(join(configurable, context_features,
-                                  configurable.c.context_feature == context_features.c.name))
-                .order_by(configurable.c.setting, context_features.c.index)
-            )).mappings().all()
-            metadata_rows = await conn.execute(
-                setting_metadata.select().order_by(setting_metadata.c.setting)
-            )
-            alias_rows = await conn.execute(
-                setting_aliases.select().order_by(setting_aliases.c.setting)
-            )
+            if include_configurable_features:
+                configurable_rows = (await conn.execute(
+                    select([configurable.c.setting, configurable.c.context_feature])
+                    .select_from(join(configurable, context_features,
+                                      configurable.c.context_feature == context_features.c.name))
+                    .order_by(configurable.c.setting, context_features.c.index)
+                )).mappings().all()
+            else:
+                configurable_rows = None
+            if include_metadata:
+                metadata_rows = await conn.execute(
+                    setting_metadata.select().order_by(setting_metadata.c.setting)
+                )
+            else:
+                metadata_rows = None
+            if include_aliases:
+                alias_rows = await conn.execute(
+                    setting_aliases.select().order_by(setting_aliases.c.setting)
+                )
+            else:
+                alias_rows = None
 
-        configurables = {
-            setting: [row['context_feature'] for row in rows]
-            for (setting, rows) in groupby(configurable_rows, key=itemgetter('setting'))
-        }
-        metadata = {
-            setting: {k: v for (_, k, v) in rows} for (setting, rows) in groupby(metadata_rows, key=itemgetter(0))
-        }
-        aliases = {
-            setting: [v for (_, v) in rows] for (setting, rows) in groupby(alias_rows, key=itemgetter(0))
-        }
+        if include_configurable_features:
+            configurable_features = {
+                setting: [row['context_feature'] for row in rows]
+                for (setting, rows) in groupby(configurable_rows, key=itemgetter('setting'))
+            }
+        else:
+            configurable_features = None
+        if include_metadata:
+            metadata = {
+                setting: {k: v for (_, k, v) in rows} for (setting, rows) in groupby(metadata_rows, key=itemgetter(0))
+            }
+        else:
+            metadata = None
+        if include_aliases:
+            aliases = {
+                setting: [v for (_, v) in rows] for (setting, rows) in groupby(alias_rows, key=itemgetter(0))
+            }
+        else:
+            aliases = None
 
         return [
             SettingSpec(
                 row['name'],
                 row['type'],
-                orjson.loads(row['default_value']),
-                metadata.get(row['name'], {}),
-                configurables[row['name']],
-                aliases.get(row['name'], []),
+                row['default_value'],
+                metadata.get(row['name'], {}) if include_metadata else None,
+                configurable_features[row['name']] if include_configurable_features else None,
+                aliases.get(row['name'], []) if include_aliases else None,
+                row['version']
             ) for row in records
         ]
 
-    async def get_all_settings_names(self) -> List[str]:
-        """
-        Returns:
-            A list of all setting names in the DB
-        """
-        select_query = select([settings.c.name]).order_by(settings.c.name)
-
-        async with self.db_engine.connect() as conn:
-            return list((await conn.execute(select_query)).scalars().all())
-
-    async def set_setting_type(self, setting_name: str, new_type: SettingType):
+    async def set_setting_type(self, setting_name: str, new_type: SettingType, new_version: str):
         """
         Change the type of a setting. Does not check validity.
         Args:
@@ -274,21 +291,16 @@ class SettingMixin(DBLogicBase):
             new_type: the new type of the setting
         """
         async with self.db_engine.begin() as conn:
-            await conn.execute(settings.update().where(settings.c.name == setting_name).values(type=str(new_type)))
+            await conn.execute(settings.update().where(settings.c.name == setting_name)
+                               .values(type=str(new_type), version=new_version))
 
-    async def rename_setting(self, old_name: str, new_name: str):
-        """
-        Change a canonical setting name to another one, adding the old one as an alias
-        Args:
-            old_name: The name of the setting to rename
-            new_name: The new name to set for the setting
-        """
+    async def rename_setting(self, old_name: str, new_name: str, new_version: str):
         async with self.db_engine.begin() as conn:
             # this should cascade through all other tables
             await conn.execute(
                 settings.update()
                 .where(settings.c.name == old_name)
-                .values({"name": new_name})
+                .values({"name": new_name, 'version': new_version})
             )
             # add the old name as an alias of the new one
             await conn.execute(
@@ -301,3 +313,6 @@ class SettingMixin(DBLogicBase):
                 delete(setting_aliases)
                 .where(setting_aliases.c.setting == new_name, setting_aliases.c.alias == new_name)
             )
+
+    async def bump_setting_version(self, conn: AsyncConnection, setting_name: str, new_version: str):
+        await conn.execute(settings.update().where(settings.c.name == setting_name).values(version=new_version))

@@ -148,17 +148,14 @@ async def test_search_rule_missing(example_rule, app_client):
 @fixture
 def mk_setting(app_client):
     async def mk_setting(name: str):
-        res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+        res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
             'name': name,
             'configurable_features': ['theme', 'trust', 'user'],
-            'type': 'int'
+            'type': 'int',
+            'default_value': 0,
         }))
         res.raise_for_status()
-        assert res.json() == {
-            'created': True,
-            'changed': [],
-            'incomplete': {}
-        }
+        assert res.json() == {'outcome': 'created'}
 
     return mk_setting
 

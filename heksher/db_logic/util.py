@@ -1,4 +1,3 @@
-import re
 from typing import Collection, Dict, Hashable, Sequence, Tuple, TypeVar, Union
 
 T = TypeVar('T', bound=Hashable)
@@ -49,4 +48,6 @@ def supersequence_new_elements(supersequence: Sequence[T], subsequence: Collecti
     return tuple(new_elements.items())
 
 
-INLINE_VALIDATION_PATTERN = re.compile(r'[a-zA-Z0-9_\s]+')
+def parse_setting_version(version: str) -> Tuple[int, int]:
+    major, _, minor = version.partition('.')
+    return int(major), int(minor)

@@ -98,7 +98,6 @@ hold any dictionary mapping strings to dictionaries that map strings to integers
 
 Type Order
 ----------
-
 Setting types have a partial ordering over them. This when we want to safely change a setting's type. We say that type
 A is a supertype of type B if every value that can be stored in type B can also be stored in type A. This will help us
 when :ref:`declaring settings <api:POST /api/v1/settings/declare>`.

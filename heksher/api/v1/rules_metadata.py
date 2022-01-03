@@ -44,7 +44,7 @@ async def replace_rule_metadata(rule_id: int, input: InputRuleMetadata, app: Hek
 
 
 class PutRuleMetadataKey(ORJSONModel):
-    value: Any = Field(description="the new value of the given key and rule in the rule's metadata")
+    value: Any = Field(..., description="the new value of the given key and rule in the rule's metadata")
 
 
 @router.put('/{rule_id}/metadata/{key}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)

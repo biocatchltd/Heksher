@@ -248,9 +248,8 @@ class RuleMixin(DBLogicBase):
                         conditions.c.rule == conditions_.c.rule, inv_match
                     ))
                      .exists()),
+                rules.c.setting.in_(setting_names)
             ]
-            if setting_names is not None:
-                clauses.append(rules.c.setting.in_(setting_names))
 
             query = (select()
                      .add_columns(rules.c.id, conditions.c.context_feature, conditions.c.feature_value)
@@ -323,3 +322,18 @@ class RuleMixin(DBLogicBase):
             result = ((await conn.execute(select([rules.c.id, rules.c.value]).where(rules.c.setting == setting_name)))
                       .all())
         return [BareRuleSpec(id_, orjson.loads(v)) for id_, v in result]
+
+    async def get_actual_configurable_features(self, setting_name: str) -> Dict[str, List[int]]:
+        """
+        Get all the rules that are configured for each context feature for a setting
+        """
+        async with self.db_engine.connect() as conn:
+            results = (await conn.execute(
+                select([conditions.c.context_feature, rules.c.id])
+                .select_from(rules.join(conditions, rules.c.id == conditions.c.rule))
+                .where(rules.c.setting == setting_name)
+                .order_by(conditions.c.context_feature)
+            )).all()
+
+        return {context_feature: [rule_id for (_, rule_id) in rows]
+                for (context_feature, rows) in groupby(results, key=itemgetter(0))}

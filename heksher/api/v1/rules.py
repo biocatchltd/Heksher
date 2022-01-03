@@ -12,7 +12,6 @@ from heksher.api.v1.rules_metadata import router as metadata_router
 from heksher.api.v1.util import ORJSONModel, PydanticResponse, application, handle_etag, router as v1_router
 from heksher.api.v1.validation import ContextFeatureName, ContextFeatureValue, MetadataKey, SettingName
 from heksher.app import HeksherApp
-from heksher.setting import Setting
 
 router = APIRouter(prefix='/rules')
 logger = getLogger(__name__)
@@ -48,7 +47,8 @@ async def search_rule(app: HeksherApp = application,
     """
     Get the ID of a rule with specific conditions.
     """
-    canon_setting = await app.db_logic.get_setting(setting, include_metadata=False)  # for aliasing
+    canon_setting = await app.db_logic.get_setting(setting, include_metadata=False, include_configurable_features=False,
+                                                   include_aliases=False)  # for aliasing
     if not canon_setting:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
     feature_values_dict: Dict[str, str] = dict(part.split(':') for part in feature_values.split(','))  # type: ignore
@@ -62,7 +62,7 @@ class AddRuleInput(ORJSONModel):
     setting: SettingName = Field(description="the setting name the rule should apply to")
     feature_values: Dict[ContextFeatureName, ContextFeatureValue] = \
         Field(description="the exact-match conditions of the rule")
-    value: Any = Field(description="the value of the setting in contexts that match the rule")
+    value: Any = Field(..., description="the value of the setting in contexts that match the rule")
     metadata: Dict[MetadataKey, Any] = Field(default_factory=dict, description="additional metadata of the rule")
 
     @validator('feature_values')
@@ -82,7 +82,8 @@ async def add_rule(input: AddRuleInput, app: HeksherApp = application):
     """
     Add a rule, and get its ID.
     """
-    setting: Optional[Setting] = await app.db_logic.get_setting(input.setting, include_metadata=False)
+    setting = await app.db_logic.get_setting(input.setting, include_metadata=False, include_configurable_features=True,
+                                             include_aliases=False)
     if not setting:
         return PlainTextResponse(f'setting not found with name {input.setting}',
                                  status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
@@ -101,11 +102,12 @@ async def add_rule(input: AddRuleInput, app: HeksherApp = application):
 
     new_id = await app.db_logic.add_rule(setting.name, input.value, input.metadata, input.feature_values)
 
-    return AddRuleOutput(rule_id=new_id)
+    return PydanticResponse(AddRuleOutput(rule_id=new_id),
+                            headers={'Location': f'/{new_id}'}, status_code=status.HTTP_201_CREATED)
 
 
 class PatchRuleInput(ORJSONModel):
-    value: Any = Field(description="the value of the setting in contexts that match the rule")
+    value: Any = Field(..., description="the value of the setting in contexts that match the rule")
 
 
 @router.patch('/{rule_id}', status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
@@ -118,7 +120,8 @@ async def patch_rule(rule_id: int, input: PatchRuleInput, app: HeksherApp = appl
     if not rule:
         return PlainTextResponse(status_code=status.HTTP_404_NOT_FOUND)
 
-    setting = await app.db_logic.get_setting(rule.setting, include_metadata=False)
+    setting = await app.db_logic.get_setting(rule.setting, include_metadata=False, include_aliases=False,
+                                             include_configurable_features=False)
     assert setting
 
     if not setting.type.validate(input.value):
@@ -191,7 +194,9 @@ async def query_rules(request: Request, app: HeksherApp = application,
                                                                         " response"),
                       ):
     if raw_settings is None:
-        settings = await app.db_logic.get_all_settings_names()
+        settings = [spec.name for spec in await app.db_logic.get_all_settings(include_configurable_features=False,
+                                                                              include_aliases=False,
+                                                                              include_metadata=False)]
     elif not raw_settings:
         settings = []
     else:

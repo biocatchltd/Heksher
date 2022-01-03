@@ -10,6 +10,7 @@ Welcome to the Heksher documentation!
     running
     setting_types
     api
+    setting_versions
     setting_aliases
     cookbook
     libraries

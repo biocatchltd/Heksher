@@ -56,7 +56,7 @@ async def app_client(monkeypatch, sql_service, purge_sql, check_indexes_of_cf):
 
 @fixture
 async def size_limit_setting(app_client):
-    res = await app_client.put('/api/v1/settings/declare', data=json.dumps({
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'size_limit',
         'configurable_features': ['user', 'theme'],
         'type': 'int',
@@ -64,11 +64,7 @@ async def size_limit_setting(app_client):
         'metadata': {'testing': True}
     }))
     res.raise_for_status()
-    assert res.json() == {
-        'created': True,
-        'changed': [],
-        'incomplete': {}
-    }
+    assert res.json() == {'outcome': 'created'}
 
 
 @fixture
