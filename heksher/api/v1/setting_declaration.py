@@ -2,7 +2,7 @@ from asyncio import gather
 from dataclasses import dataclass
 from itertools import chain
 from logging import getLogger
-from typing import Any, Dict, List, Optional, Union, Literal, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import orjson
 from fastapi import HTTPException
@@ -10,7 +10,7 @@ from pydantic import Field, root_validator
 from starlette import status
 from starlette.responses import PlainTextResponse
 
-from heksher.api.v1.util import ORJSONModel, application, PydanticResponse
+from heksher.api.v1.util import ORJSONModel, PydanticResponse, application
 from heksher.api.v1.validation import ContextFeatureName, MetadataKey, SettingName, SettingVersion
 from heksher.app import HeksherApp
 from heksher.db_logic.setting import SettingSpec
@@ -107,6 +107,14 @@ class MessageDifference:
     message: str
 
 
+# type aliases for internal logic
+DifferenceCategory = Literal['minor', 'major', 'mismatch']
+DifferenceSpec = Union[MessageDifference, AttrDifference]
+DifferencesDict = Dict[DifferenceCategory, List[DifferenceSpec]]
+NewSettingAttributes = Tuple[Optional[List[str]], Optional[SettingType], Optional[str], Optional[Any],
+                             Optional[Dict[str, Any]]]
+
+
 async def declare_setting_endpoint(input: DeclareSettingInput, app: HeksherApp = application):
     """
     Ensure that a setting exists, creating it if necessary.
@@ -146,13 +154,8 @@ async def declare_setting_endpoint(input: DeclareSettingInput, app: HeksherApp =
             await app.db_logic.add_setting(spec)
             return PydanticResponse(UpToDateDeclareSettingOutput(outcome='created'))
 
-    async def get_diffs(is_outdated: bool) -> \
-            Tuple[Tuple[Optional[List[str]], Optional[SettingType], Optional[str], Optional[Any], Optional[
-                Dict[str, Any]]],
-                  Dict[Literal['minor', 'major', 'mismatch'], List[Union[AttrDifference, MessageDifference]]]
-            ]:
-        differences: Dict[Literal['minor', 'major', 'mismatch'], List[Union[AttrDifference, MessageDifference]]] = \
-            {k: [] for k in ['minor', 'major', 'mismatch']}
+    async def get_diffs(is_outdated: bool) -> Tuple[NewSettingAttributes, DifferencesDict]:
+        differences: DifferencesDict = {k: [] for k in ['minor', 'major', 'mismatch']}  # type: ignore[misc]
 
         # all the functions below handle different attributes of the setting. They append the differences to the dict,
         # and return True if there are any differences.
@@ -238,9 +241,7 @@ async def declare_setting_endpoint(input: DeclareSettingInput, app: HeksherApp =
                 input.default_value if handle_default_value_diff(is_outdated) else None,
                 input.metadata if handle_metadata_diff(is_outdated) else None), differences
 
-    def diff_list(differences: Dict[Literal['minor', 'major', 'mismatch'],
-                                    List[Union[AttrDifference, MessageDifference]]]) -> \
-            List[Union[MessageDifferenceOutput, AttributeDifferenceOutput]]:
+    def diff_list(differences: DifferencesDict) -> List[Union[MessageDifferenceOutput, AttributeDifferenceOutput]]:
         diff_list: List[Union[MessageDifferenceOutput, AttributeDifferenceOutput]] = []
         for level, diffs in differences.items():
             for diff in diffs:
@@ -289,7 +290,7 @@ async def declare_setting_endpoint(input: DeclareSettingInput, app: HeksherApp =
                                                         differences=diff_list(differences)))
 
 
-declare_setting_enpoint_args = dict(
+declare_setting_enpoint_args: Dict[str, Any] = dict(
     methods=['POST'],
     responses={
         status.HTTP_200_OK: {

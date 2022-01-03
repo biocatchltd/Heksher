@@ -139,6 +139,7 @@ async def test_declare_modify(app_client):
         'version': '2.0',
     }
 
+
 @mark.asyncio
 @mark.parametrize('version', ['1.1', '2.0'])
 async def test_declare_vbump(app_client, version):
@@ -204,31 +205,6 @@ async def test_declare_same_as_alias(app_client):
         'version': '2.0',
     }))
     assert res.status_code == 422
-
-
-@mark.asyncio
-async def test_declare_nonexistant_alias(app_client):
-    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
-        'name': 'size_limit',
-        'configurable_features': ['user'],
-        'type': 'int',
-        'default_value': 200,
-        'metadata': {'testing': True, 'ctr': 1, 'dummy': 2},
-        'version': '1.0',
-    }))
-    res.raise_for_status()
-    assert res.json() == {'outcome': 'created', }
-
-    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
-        'name': 'size_limit',
-        'configurable_features': ['user', 'theme'],
-        'type': 'int',
-        'default_value': 300,
-        'metadata': {'testing': True, 'ctr': 2},
-        'alias': 'foobar',
-        'version': '2.0',
-    }))
-    assert res.status_code == 404
 
 
 @mark.asyncio

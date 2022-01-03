@@ -4,7 +4,7 @@ from sqlalchemy import and_
 from sqlalchemy.dialects.postgresql import insert
 
 from heksher.db_logic.logic_base import DBLogicBase
-from heksher.db_logic.metadata import setting_metadata, settings
+from heksher.db_logic.metadata import setting_metadata
 
 
 class SettingMetadataMixin(DBLogicBase):

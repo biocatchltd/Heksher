@@ -337,4 +337,3 @@ class RuleMixin(DBLogicBase):
 
         return {context_feature: [rule_id for (_, rule_id) in rows]
                 for (context_feature, rows) in groupby(results, key=itemgetter(0))}
-

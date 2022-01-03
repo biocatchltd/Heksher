@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from functools import cached_property
 from itertools import groupby
-from typing import Any, Dict, Iterable, List, Mapping, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import orjson
 from _operator import itemgetter
 from sqlalchemy import String, column, delete, join, or_, select, values
-from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 from heksher.db_logic.logic_base import DBLogicBase
 from heksher.db_logic.metadata import configurable, context_features, setting_aliases, setting_metadata, settings
@@ -48,7 +48,7 @@ class SettingMixin(DBLogicBase):
         async with self.db_engine.connect() as conn:
             stmt = (
                 select([names_table.c.n, settings.c.name])
-                    .select_from(
+                .select_from(
                     join(names_table,
                          join(settings,
                               setting_aliases,
@@ -56,8 +56,8 @@ class SettingMixin(DBLogicBase):
                               isouter=True),
                          or_(settings.c.name == names_table.c.n, setting_aliases.c.alias == names_table.c.n),
                          isouter=True)
-                )
-                    .distinct()
+                    )
+                .distinct()
             )
             results = (await conn.execute(stmt)).all()
         return dict(results)
@@ -75,11 +75,11 @@ class SettingMixin(DBLogicBase):
         async with self.db_engine.connect() as conn:
             stmt = (
                 select([settings.c.name, settings.c.type, settings.c.default_value, settings.c.version])
-                    .select_from(
+                .select_from(
                     join(settings, setting_aliases, settings.c.name == setting_aliases.c.setting, isouter=True)
                 )
-                    .where(or_(settings.c.name == name_or_alias, setting_aliases.c.alias == name_or_alias))
-                    .limit(1)
+                .where(or_(settings.c.name == name_or_alias, setting_aliases.c.alias == name_or_alias))
+                .limit(1)
             )
             data_row = (await conn.execute(stmt)).mappings().first()
 
@@ -90,11 +90,11 @@ class SettingMixin(DBLogicBase):
             if include_aliases:
                 stmt = (
                     select([setting_aliases.c.alias])
-                        .select_from(
+                    .select_from(
                         join(settings, setting_aliases, settings.c.name == setting_aliases.c.setting)
                     )
-                        .where(settings.c.name == setting_name)
-                        .order_by(setting_aliases.c.alias)
+                    .where(settings.c.name == setting_name)
+                    .order_by(setting_aliases.c.alias)
                 )
                 aliases = (await conn.execute(stmt)).scalars().all()
             else:
@@ -103,11 +103,11 @@ class SettingMixin(DBLogicBase):
             if include_configurable_features:
                 stmt = (
                     select([configurable.c.context_feature])
-                        .select_from(
+                    .select_from(
                         join(configurable, context_features, configurable.c.context_feature == context_features.c.name)
                     )
-                        .where(configurable.c.setting == setting_name)
-                        .order_by(context_features.c.index)
+                    .where(configurable.c.setting == setting_name)
+                    .order_by(context_features.c.index)
                 )
                 configurable_features = (await conn.execute(stmt)).scalars().all()
             else:
@@ -116,7 +116,7 @@ class SettingMixin(DBLogicBase):
             if include_metadata:
                 stmt = (
                     select([setting_metadata.c.key, setting_metadata.c.value])
-                        .where(setting_metadata.c.setting == setting_name)
+                    .where(setting_metadata.c.setting == setting_name)
                 )
                 metadata_ = dict((await conn.execute(stmt)).all())
             else:
@@ -220,8 +220,8 @@ class SettingMixin(DBLogicBase):
             resp = (await conn.execute(settings.delete().where(settings.c.name == name))).rowcount
         return resp == 1
 
-    async def get_all_settings(self, include_configurable_features:bool, include_metadata:bool, include_aliases:bool)\
-            -> List[SettingSpec]:
+    async def get_all_settings(self, include_configurable_features: bool, include_metadata: bool,
+                               include_aliases: bool) -> List[SettingSpec]:
         """
         Returns:
             A list of all setting specs in the DB
@@ -234,9 +234,9 @@ class SettingMixin(DBLogicBase):
             if include_configurable_features:
                 configurable_rows = (await conn.execute(
                     select([configurable.c.setting, configurable.c.context_feature])
-                        .select_from(join(configurable, context_features,
-                                          configurable.c.context_feature == context_features.c.name))
-                        .order_by(configurable.c.setting, context_features.c.index)
+                    .select_from(join(configurable, context_features,
+                                      configurable.c.context_feature == context_features.c.name))
+                    .order_by(configurable.c.setting, context_features.c.index)
                 )).mappings().all()
             else:
                 configurable_rows = None
@@ -307,8 +307,8 @@ class SettingMixin(DBLogicBase):
             # this should cascade through all other tables
             await conn.execute(
                 settings.update()
-                    .where(settings.c.name == old_name)
-                    .values({"name": new_name, 'version': new_version})
+                .where(settings.c.name == old_name)
+                .values({"name": new_name, 'version': new_version})
             )
             # add the old name as an alias of the new one
             await conn.execute(
@@ -319,7 +319,7 @@ class SettingMixin(DBLogicBase):
             # in case that the new name is an old alias, we remove the old alias from the aliases table
             await conn.execute(
                 delete(setting_aliases)
-                    .where(setting_aliases.c.setting == new_name, setting_aliases.c.alias == new_name)
+                .where(setting_aliases.c.setting == new_name, setting_aliases.c.alias == new_name)
             )
 
     async def bump_setting_version(self, conn: AsyncConnection, setting_name: str, new_version: str):

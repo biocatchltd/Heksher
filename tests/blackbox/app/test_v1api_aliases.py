@@ -116,7 +116,8 @@ async def test_metadata(app_client, default_declare_params):
     _get_ok_data(await app_client.post('/api/v1/settings/declare', data=json.dumps(default_declare_params)))
 
     assert await get() == {'testing': True}
-    resp = await app_client.post('/api/v1/settings/yayin/metadata', data=json.dumps({"metadata": {"alcohol": "6%"}, 'version': '1.2'}))
+    resp = await app_client.post('/api/v1/settings/yayin/metadata', data=json.dumps({"metadata": {"alcohol": "6%"},
+                                                                                     'version': '1.2'}))
     resp.raise_for_status()
     assert await get() == {'testing': True, "alcohol": "6%"}
     resp = await app_client.put('/api/v1/settings/yayin/metadata', data=json.dumps({"metadata": {
@@ -126,7 +127,8 @@ async def test_metadata(app_client, default_declare_params):
     }, "version": "1.3"}))
     resp.raise_for_status()
     assert await get() == {"price": 50, "experimenting": True, "should_drink": True}
-    resp = await app_client.put('/api/v1/settings/yayin/metadata/should_drink', data=json.dumps({"value": False, 'version': '1.4'}))
+    resp = await app_client.put('/api/v1/settings/yayin/metadata/should_drink', data=json.dumps({"value": False,
+                                                                                                 'version': '1.4'}))
     resp.raise_for_status()
     assert await get() == {"price": 50, "experimenting": True, "should_drink": False}
     resp = await app_client.delete('/api/v1/settings/yayin/metadata/should_drink', data=json.dumps({"version": "1.5"}))
