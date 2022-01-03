@@ -139,6 +139,47 @@ async def test_declare_modify(app_client):
         'version': '2.0',
     }
 
+@mark.asyncio
+@mark.parametrize('version', ['1.1', '2.0'])
+async def test_declare_vbump(app_client, version):
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
+        'name': 'size_limit',
+        'configurable_features': ['user'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True, 'ctr': 1, 'dummy': 2},
+        'version': '1.0',
+    }))
+    res.raise_for_status()
+    assert res.json() == {'outcome': 'created', }
+
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
+        'name': 'size_limit',
+        'configurable_features': ['user'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True, 'ctr': 1, 'dummy': 2},
+        'version': version,
+    }))
+    res.raise_for_status()
+    assert res.json() == {
+        'outcome': 'upgraded',
+        'previous_version': '1.0',
+        'differences': [],
+    }
+
+    res = await app_client.get('/api/v1/settings/size_limit')
+    res.raise_for_status()
+    assert res.json() == {
+        'name': 'size_limit',
+        'configurable_features': ['user'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True, 'ctr': 1, 'dummy': 2},
+        'aliases': [],
+        'version': version,
+    }
+
 
 @mark.asyncio
 async def test_declare_same_as_alias(app_client):
@@ -269,6 +310,10 @@ async def test_modify_with_fcs_in_use(size_limit_setting, app_client):
         'version': '2.0',
     }))
     assert res.status_code == 409
+    assert res.json()['differences'] == [
+        {'level': 'mismatch', 'message': "configurable features ['theme'] are still in use by rules [1]"}
+    ]
+
 
 @mark.asyncio
 async def test_declare_major_changes_on_minor_vbump(size_limit_setting, app_client):
@@ -281,6 +326,7 @@ async def test_declare_major_changes_on_minor_vbump(size_limit_setting, app_clie
         'version': '1.1',
     }))
     assert res.status_code == 409
+
 
 @mark.asyncio
 async def test_declare_major_changes_on_major_vbump(size_limit_setting, app_client):
@@ -312,6 +358,7 @@ async def test_declare_major_changes_on_major_vbump(size_limit_setting, app_clie
         'aliases': [],
         'version': '2.0',
     }
+
 
 @mark.asyncio
 async def test_declare_type_upgrade(size_limit_setting, app_client):
@@ -412,6 +459,27 @@ async def test_declare_type_upgrade_to_subtype(app_client):
         'latest_version': '1.1',
         'differences': [{'level': 'minor', 'attribute': 'type', 'latest_value': 'Enum[0,1]'}]
     }
+
+
+@mark.asyncio
+async def test_modify_type_incompatible(size_limit_setting, app_client):
+    (await app_client.post('/api/v1/rules', data=json.dumps({
+        'setting': 'size_limit',
+        'feature_values': {'user': '1', 'theme': '2'},
+        'value': 10,
+    }))).raise_for_status()
+
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
+        'name': 'size_limit',
+        'configurable_features': ['user'],
+        'type': 'Enum[0,11,12]',
+        'default_value': 0,
+        'metadata': {'testing': True},
+        'version': '2.0',
+    }))
+    assert res.status_code == 409
+    assert {'level': 'mismatch', 'message': 'setting type incompatible with values for rules: [1]'} \
+           in res.json()['differences']
 
 
 @mark.asyncio
@@ -846,8 +914,7 @@ async def test_rename_setting(app_client, old):
 
 
 @mark.asyncio
-@mark.parametrize('old', ['A', 'A1'
-                          ])
+@mark.parametrize('old', ['A', 'A1'])
 async def test_rename_setting_no_action_needed(app_client, old):
     res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'A1',
@@ -878,11 +945,8 @@ async def test_rename_setting_no_action_needed(app_client, old):
 
 
 @mark.asyncio
-@mark.parametrize('old,new', [
-    ('A', 'A1'),
-    ('A1', 'A1'),
-])
-async def test_rename_setting_to_alias(app_client, old, new):
+@mark.parametrize('old', ['A', 'A1', ])
+async def test_rename_setting_to_alias(app_client, old):
     res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
         'name': 'A1',
         'configurable_features': ['user', 'theme'],
@@ -901,7 +965,45 @@ async def test_rename_setting_to_alias(app_client, old, new):
         'version': '2.0',
     }))
     res.raise_for_status()
-    res = await app_client.put(f'/api/v1/settings/{old}/name', data=json.dumps({'name': new, 'version': '2.1'}))
+    res = await app_client.put(f'/api/v1/settings/{old}/name', data=json.dumps({'name': 'A1', 'version': '2.1'}))
+    res.raise_for_status()
+    res = await app_client.get('/api/v1/settings/A1')
+    res.raise_for_status()
+    data = res.json()
+    assert data['name'] == 'A1'
+    assert set(data['aliases']) == {'A'}
+    assert data['version'] == '2.1'
+
+
+@mark.asyncio
+async def test_rename_setting_to_alias_with_declaration(app_client):
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
+        'name': 'A1',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+    }))
+    res.raise_for_status()
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
+        'name': 'A',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'alias': 'A1',
+        'version': '2.0',
+    }))
+    res.raise_for_status()
+    res = await app_client.post('/api/v1/settings/declare', data=json.dumps({
+        'name': 'A1',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'alias': 'A',
+        'version': '2.1',
+    }))
     res.raise_for_status()
     res = await app_client.get('/api/v1/settings/A1')
     res.raise_for_status()
@@ -1000,3 +1102,257 @@ async def test_rename_setting_cascade(app_client):
     res = await app_client.get(f'/api/v1/rules/{rule_id}')
     res.raise_for_status()
     assert res.json()["setting"] == "Z"
+
+
+@mark.asyncio
+async def test_set_cfs_minor(size_limit_setting, app_client):
+    res = await app_client.put('/api/v1/settings/size_limit/configurable_features', data=json.dumps({
+        'configurable_features': ['user'],
+        'version': '1.1'
+    }))
+    assert res.status_code == 204
+    assert not res.content
+
+    res = await app_client.get('/api/v1/settings/size_limit')
+    res.raise_for_status()
+    assert res.json() == {
+        'name': 'size_limit',
+        'configurable_features': ['user'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'aliases': [],
+        'version': '1.1',
+    }
+
+
+@mark.asyncio
+async def test_set_cfs_minor_rejected(size_limit_setting, app_client):
+    res = await app_client.put('/api/v1/settings/size_limit/configurable_features', data=json.dumps({
+        'configurable_features': ['user', 'theme', 'trust'],
+        'version': '1.1'
+    }))
+    assert res.status_code == 409
+
+    res = await app_client.get('/api/v1/settings/size_limit')
+    res.raise_for_status()
+    assert res.json() == {
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'aliases': [],
+        'version': '1.0',
+    }
+
+
+@mark.asyncio
+async def test_set_cfs_minor_conflict(size_limit_setting, app_client):
+    (await app_client.post('/api/v1/rules', data=json.dumps({
+        'setting': 'size_limit',
+        'feature_values': {'user': '1', 'theme': '2'},
+        'value': 10,
+    }))).raise_for_status()
+
+    res = await app_client.put('/api/v1/settings/size_limit/configurable_features', data=json.dumps({
+        'configurable_features': ['user'],
+        'version': '1.1'
+    }))
+    assert res.status_code == 409
+
+    res = await app_client.get('/api/v1/settings/size_limit')
+    res.raise_for_status()
+    assert res.json() == {
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'aliases': [],
+        'version': '1.0',
+    }
+
+
+@mark.asyncio
+async def test_set_cfs_no_change(size_limit_setting, app_client):
+    res = await app_client.put('/api/v1/settings/size_limit/configurable_features', data=json.dumps({
+        'configurable_features': ['user', 'theme'],
+        'version': '1.1'
+    }))
+    assert res.status_code == 204
+    assert not res.content
+
+    res = await app_client.get('/api/v1/settings/size_limit')
+    res.raise_for_status()
+    assert res.json() == {
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'aliases': [],
+        'version': '1.1',
+    }
+
+
+@mark.asyncio
+async def test_set_cfs_outdated(size_limit_setting, app_client):
+    res = await app_client.put('/api/v1/settings/size_limit/configurable_features', data=json.dumps({
+        'configurable_features': ['user', 'theme'],
+        'version': '0.1'
+    }))
+    assert res.status_code == 409
+
+    res = await app_client.get('/api/v1/settings/size_limit')
+    res.raise_for_status()
+    assert res.json() == {
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'aliases': [],
+        'version': '1.0',
+    }
+
+
+@mark.asyncio
+async def test_set_cfs_same(size_limit_setting, app_client):
+    res = await app_client.put('/api/v1/settings/size_limit/configurable_features', data=json.dumps({
+        'configurable_features': ['user', 'theme'],
+        'version': '1.0'
+    }))
+    assert res.status_code == 204
+    assert not res.content
+
+    res = await app_client.get('/api/v1/settings/size_limit')
+    res.raise_for_status()
+    assert res.json() == {
+        'name': 'size_limit',
+        'configurable_features': ['user', 'theme'],
+        'type': 'int',
+        'default_value': 200,
+        'metadata': {'testing': True},
+        'aliases': [],
+        'version': '1.0',
+    }
+
+
+@mark.asyncio
+@mark.parametrize('new_type', ['float', 'int'])
+async def test_type_change_outdated(interval_setting, app_client, new_type):
+    res = await app_client.put('/api/v1/settings/interval/type', json={
+        'type': new_type,
+        'version': '0.1',
+    })
+    assert res.status_code == 409
+
+    res = await app_client.get('/api/v1/settings/interval')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == 'float'
+    assert resp_json['default_value'] == 5
+    assert resp_json['version'] == '1.0'
+
+
+@mark.asyncio
+@mark.parametrize('new_version', ['1.0', '1.1'])
+async def test_type_no_change(interval_setting, app_client, new_version):
+    res = await app_client.put('/api/v1/settings/interval/type', json={
+        'type': 'float',
+        'version': new_version,
+    })
+    assert res.status_code == 204
+    assert not res.content
+
+    res = await app_client.get('/api/v1/settings/interval')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == 'float'
+    assert resp_json['default_value'] == 5
+    assert resp_json['version'] == new_version
+
+
+@mark.asyncio
+async def test_type_major_on_minor(size_limit_setting, app_client):
+    res = await app_client.put('/api/v1/settings/size_limit/type', json={
+        'type': 'float',
+        'version': '1.1',
+    })
+    assert res.status_code == 409
+
+    res = await app_client.get('/api/v1/settings/size_limit')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == 'int'
+    assert resp_json['default_value'] == 200
+    assert resp_json['version'] == '1.0'
+
+
+@mark.asyncio
+async def test_type_outdated(size_limit_setting, app_client):
+    res = await app_client.put('/api/v1/settings/size_limit/type', json={
+        'type': 'float',
+        'version': '0.1',
+    })
+    assert res.status_code == 409
+
+    res = await app_client.get('/api/v1/settings/size_limit')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == 'int'
+    assert resp_json['default_value'] == 200
+    assert resp_json['version'] == '1.0'
+
+
+@mark.asyncio
+@mark.parametrize('new_version', ['1.0', '1.1'])
+async def test_rename_no_change(interval_setting, app_client, new_version):
+    res = await app_client.put('/api/v1/settings/interval/name', json={
+        'name': 'interval',
+        'version': new_version,
+    })
+    assert res.status_code == 204
+    assert not res.content
+
+    res = await app_client.get('/api/v1/settings/interval')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == 'float'
+    assert resp_json['default_value'] == 5
+    assert resp_json['version'] == new_version
+
+
+@mark.asyncio
+@mark.parametrize('new_name', ['interval', 'fooobar'])
+async def test_rename_outdated(interval_setting, app_client, new_name):
+    res = await app_client.put('/api/v1/settings/interval/name', json={
+        'name': new_name,
+        'version': '0.1',
+    })
+    assert res.status_code == 409
+
+    res = await app_client.get('/api/v1/settings/interval')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == 'float'
+    assert resp_json['default_value'] == 5
+    assert resp_json['version'] == '1.0'
+
+
+@mark.asyncio
+@mark.parametrize('new_name', ['interval', 'fooobar'])
+async def test_rename_back(interval_setting, app_client, new_name):
+    res = await app_client.put('/api/v1/settings/interval/name', json={
+        'name': new_name,
+        'version': '0.1',
+    })
+    assert res.status_code == 409
+
+    res = await app_client.get('/api/v1/settings/interval')
+    res.raise_for_status()
+    resp_json = res.json()
+    assert resp_json['type'] == 'float'
+    assert resp_json['default_value'] == 5
+    assert resp_json['version'] == '1.0'

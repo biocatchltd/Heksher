@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import constr
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: nocover
     ContextFeatureName = str
     ContextFeatureValue = str
     SettingName = str

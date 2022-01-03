@@ -10,12 +10,13 @@ from heksher.db_logic.metadata import setting_metadata, settings
 class SettingMetadataMixin(DBLogicBase):
     async def update_setting_metadata(self, name: str, metadata: Dict[str, Any], new_version: str):
         async with self.db_engine.begin() as conn:
-            stmt = insert(setting_metadata).values(
-                [{'setting': name, 'key': k, 'value': v} for (k, v) in metadata.items()]
-            )
-            await conn.execute(stmt.on_conflict_do_update(index_elements=[setting_metadata.c.setting,
-                                                                          setting_metadata.c.key],
-                                                          set_={"value": stmt.excluded.value}))
+            if metadata:
+                stmt = insert(setting_metadata).values(
+                    [{'setting': name, 'key': k, 'value': v} for (k, v) in metadata.items()]
+                )
+                await conn.execute(stmt.on_conflict_do_update(index_elements=[setting_metadata.c.setting,
+                                                                              setting_metadata.c.key],
+                                                              set_={"value": stmt.excluded.value}))
             await self.bump_setting_version(conn, name, new_version)
 
     async def replace_setting_metadata(self, name: str, new_metadata: Dict[str, Any], new_version: str):

@@ -1,4 +1,3 @@
-import re
 from typing import Collection, Dict, Hashable, Sequence, Tuple, TypeVar, Union
 
 T = TypeVar('T', bound=Hashable)

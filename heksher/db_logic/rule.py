@@ -248,9 +248,8 @@ class RuleMixin(DBLogicBase):
                         conditions.c.rule == conditions_.c.rule, inv_match
                     ))
                      .exists()),
+                rules.c.setting.in_(setting_names)
             ]
-            if setting_names is not None:
-                clauses.append(rules.c.setting.in_(setting_names))
 
             query = (select()
                      .add_columns(rules.c.id, conditions.c.context_feature, conditions.c.feature_value)

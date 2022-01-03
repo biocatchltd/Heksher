@@ -25,8 +25,6 @@ async def update_setting_metadata(name: str, input: InputSettingMetadata, app: H
     """
     Update the setting's metadata
     """
-    if not input.metadata:
-        return None
     setting = await app.db_logic.get_setting(name, include_metadata=False, include_aliases=False,
                                              include_configurable_features=False)
     if not setting:

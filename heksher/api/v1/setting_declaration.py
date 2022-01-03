@@ -172,7 +172,7 @@ async def declare_setting_endpoint(input: DeclareSettingInput, app: HeksherApp =
                 if removed_cfs_in_use:
                     rule_ids = list(chain.from_iterable(actual_cfs_in_use[cf] for cf in removed_cfs_in_use))
                     differences['mismatch'].append(MessageDifference(
-                        f'configurable features {removed_cfs} are still in use by rules {rule_ids}'))
+                        f'configurable features {sorted(removed_cfs)} are still in use by rules {rule_ids}'))
                     return True
             if existing_setting_cfs > new_setting_cfs:
                 differences['minor'].append(

@@ -32,12 +32,6 @@ class SettingSpec:
     def default_value(self):
         return orjson.loads(self.raw_default_value)
 
-    @property
-    def all_names(self) -> Optional[List[str]]:
-        if self.aliases is None:
-            return None
-        return [self.name] + self.aliases
-
 
 class SettingMixin(DBLogicBase):
     async def get_canonical_names(self, names_or_aliases: Iterable[str]) -> Dict[str, str]:
@@ -166,12 +160,7 @@ class SettingMixin(DBLogicBase):
                         [{'setting': setting.name, 'key': k, 'value': v} for (k, v) in setting.metadata.items()]
                     )
                 )
-            if setting.aliases:
-                await conn.execute(
-                    insert(setting_aliases).values(
-                        [{'setting': setting.name, 'alias': alias} for alias in setting.aliases]
-                    )
-                )
+            assert not setting.aliases  # newly added settings can't have aliases
 
     async def update_setting(self, old_name: str, new_name: Optional[str], configurable_features: Optional[List[str]],
                              type: Optional[SettingType], default_value: Optional[Any],
@@ -209,6 +198,10 @@ class SettingMixin(DBLogicBase):
             )
 
             if new_name:
+                # remove the new name from the aliases table, if it exists
+                await conn.execute(
+                    setting_aliases.delete().where(setting_aliases.c.alias == new_name)
+                )
                 await conn.execute(
                     insert(setting_aliases).values(
                         [{'setting': new_name, 'alias': old_name}]

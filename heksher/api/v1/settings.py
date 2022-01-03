@@ -277,6 +277,10 @@ async def set_configurable_features(name: str, input: ConfigurableFeaturesInput,
             rule_ids = list(chain.from_iterable(actual_cfs_in_use[cf] for cf in removed_cfs_in_use))
             return PlainTextResponse(f'Configurable features {removed_cfs_in_use} are in use by rules {rule_ids}',
                                      status_code=status.HTTP_409_CONFLICT)
+    if not (existing_cfs > new_cfs) and existing_version[0] == new_version[0]:
+        # can't add new cfs on the same major
+        return PlainTextResponse(f'Cannot add new configurable features on a minor version bump',
+                                 status_code=status.HTTP_409_CONFLICT)
     async with app.db_logic.db_engine.begin() as conn:
         await set_settings_configurable_features(conn, setting.name, input.configurable_features, input.version)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
