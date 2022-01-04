@@ -9,8 +9,8 @@ Welcome to the Heksher documentation!
     concepts
     running
     setting_types
-    api
     setting_versions
+    api
     setting_aliases
     cookbook
     libraries

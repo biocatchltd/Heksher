@@ -5,7 +5,6 @@ from async_asgi_testclient import TestClient
 from pytest import fixture
 
 import heksher.app as app_mod
-from heksher.db_logic import DBLogic
 from heksher.main import app
 
 
@@ -46,10 +45,8 @@ def mock_engine():
 @fixture
 async def app_client(monkeypatch, mock_engine):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', 'postgresql://dbuser:swordfish@pghost10/')
-    monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', '["A","B","C"]')
 
     monkeypatch.setattr(app_mod, 'create_async_engine', mock_engine)
-    monkeypatch.setattr(app_mod, 'DBLogic', lambda *a: AsyncMock(DBLogic))
 
     async with TestClient(app) as app_client:
         yield app_client
