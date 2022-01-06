@@ -51,3 +51,14 @@ There are some changes that are never acceptable, as they would break the logic 
 
 * Changing a setting type to a value that does not accept the value of at least one rule of the setting.
 * Removing configurable features that are matched by at least one rule of the setting.
+
+Explicit Versioning
+--------------------
+
+For most use cases, upgrading a setting via the declaration API is sufficient. However, there are some changes that
+might fail depending on the state of the ruleset of the service. If these conflicts are encountered with the declaration
+API, our app might fail. To avoid this, these potentially conflicting changes can be made explicit with explicit API
+calls. These API endpoints are:
+
+* :ref:`PUT /api/v1/settings/setting_name>/configurable_features`
+* :ref:`PUT /api/v1/settings/setting_name>/type`

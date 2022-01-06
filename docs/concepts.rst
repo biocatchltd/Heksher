@@ -13,7 +13,8 @@ attributes:
 * type: the :ref:`types <setting_types:Setting Types>` of the setting.
 * metadata: additional metadata about the setting.
 * aliases: a list of :ref:`aliases <setting_aliases:Setting Aliases>` of the setting.
-* default: the default value of the setting. Optional.
+* default: the default value of the setting.
+* version: the latest version of the setting declaration, see :ref:`setting_versioning:Setting Versioning`.
 
 Context Features
 -----------------------

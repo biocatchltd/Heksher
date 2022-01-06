@@ -34,9 +34,9 @@ Additional Environment Variables
 -------------------------------------------
 
 * **HEKSHER_DB_CONNECTION_STRING**: The database connection string (see `above <Dependencies>`_).
-* **HEKSHER_STARTUP_CONTEXT_FEATURES**: A semicolon-delimited list of :ref:`concepts:context features`, in order.
-  Heksher will adapt the database's existing context features to this list (or raise an error if it cannot). For
-  example: ``user;trust;theme``
+* **HEKSHER_STARTUP_CONTEXT_FEATURES** (optional): A semicolon-delimited list of :ref:`concepts:context features`, in
+  order. If present, Heksher will adapt the database's existing context features to this list (or raise an error if it
+  cannot). For example: ``user;trust;theme``
 
 The following environment variables are optional for logging:
 

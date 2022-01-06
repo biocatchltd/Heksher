@@ -71,7 +71,7 @@ async def test_rules(app_client, default_declare_params):
         }))
 
     async def query(*settings: str):
-        return _get_ok_data(await app_client.get('/api/v1/rules/query', query_string={
+        return _get_ok_data(await app_client.get('/api/v1/query', query_string={
             'settings': ','.join(settings),
             'context_filters': "*",
         }))
@@ -100,8 +100,10 @@ async def test_rules(app_client, default_declare_params):
         await query("cat", "kelev", "yanshuf")
     assert (await query("cat", "kelev"))['settings'] == {
         'hatul': {'rules': [{'value': 10, 'context_features': [['theme', 'bright']], 'rule_id': cat_rule},
-                            {'value': 10, 'context_features': [['theme', 'dark']], 'rule_id': hatul_rule}]},
-        'kelev': {'rules': [{'value': 10, 'context_features': [['theme', 'dracula']], 'rule_id': kelev_rule}]}
+                            {'value': 10, 'context_features': [['theme', 'dark']], 'rule_id': hatul_rule}],
+                  'default_value': 5},
+        'kelev': {'rules': [{'value': 10, 'context_features': [['theme', 'dracula']], 'rule_id': kelev_rule}],
+                  'default_value': 5}
     }
 
 
