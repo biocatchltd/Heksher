@@ -2,14 +2,14 @@
 ## 0.5.0 (REQ alembic upgrade)
 ### Removed
 * old api endpoint POST /api/v1/rules/query has been removed and replaced with GET /api/v1/query
-* The inputs value for add_rule, value for patch_rule, value for put rule metadata key, value for 
- put setting metadata key, are now required.
 ### Changed
 * the rename api endpoint has been changed to PUT /api/v1/<name>/name.
 * the method of the endpoint /api/v1/rules/search has been changed to GET.
 * All setting now must have a default value.
 * Setting declarations are now versioned.
 * `HEKSHER_STARTUP_CONTEXT_FEATURES` is now optional.
+* The inputs value for add_rule, value for patch_rule, value for put rule metadata key, value for 
+ put setting metadata key, are now required.
 ### Deprecated
 * The api endpoint PATCH /api/v1/rules/<rule> to change a rule's value is now deprecated, new users
   should use PUT /api/v1/rules/<rule>/value
