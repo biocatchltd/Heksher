@@ -8,8 +8,10 @@ import sentry_sdk
 from aiologstash import create_tcp_handler
 from envolved import EnvVar, Schema
 from envolved.parsers import CollectionParser
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from starlette.responses import PlainTextResponse
+from starlette.status import HTTP_404_NOT_FOUND
 
 from heksher._version import __version__
 from heksher.db_logic.context_feature import db_add_context_features, db_get_context_features, db_move_context_features
@@ -21,6 +23,7 @@ logger = getLogger(__name__)
 
 connection_string = EnvVar('HEKSHER_DB_CONNECTION_STRING', type=db_url_with_async_driver)
 startup_context_features = EnvVar('HEKSHER_STARTUP_CONTEXT_FEATURES', type=CollectionParser(';', str), default=None)
+doc_only_ev = EnvVar("DOC_ONLY", type=bool, default=False)
 
 
 class LogstashSettingSchema(Schema):
@@ -34,6 +37,14 @@ class LogstashSettingSchema(Schema):
 logstash_settings_ev = EnvVar('HEKSHER_LOGSTASH_', default=None, type=LogstashSettingSchema)
 sentry_dsn_ev = EnvVar('SENTRY_DSN', default='', type=str)
 
+redoc_mode_whitelist = frozenset((
+    '/favicon.ico',
+    '/docs',
+    '/redoc',
+    '/openapi.json',
+    '/api/health',
+))
+
 
 class HeksherApp(FastAPI):
     """
@@ -41,6 +52,7 @@ class HeksherApp(FastAPI):
     """
     engine: AsyncEngine
     health_monitor: HealthMonitor
+    doc_only: bool
 
     async def ensure_context_features(self, expected_context_features: Sequence[str]):
         async with self.engine.connect() as conn:
@@ -64,6 +76,20 @@ class HeksherApp(FastAPI):
                 await db_add_context_features(conn, dict(super_sequence))
 
     async def startup(self):
+        self.doc_only = doc_only_ev.get()
+        if self.doc_only:
+            @self.middleware('http')
+            async def doc_only_middleware(request: Request, call_next):
+                path = request.url.path
+                if path.endswith("/"):
+                    # our whitelist is without a trailing slash. we remove the slash here and let starlette's redirect
+                    # do its work
+                    path = path[:-1]
+                if path not in redoc_mode_whitelist:
+                    return PlainTextResponse("The server is running in doc_only mode, only docs/ and redoc/ paths"
+                                             " are supported", HTTP_404_NOT_FOUND)
+                return await call_next(request)
+            return
         logstash_settings = logstash_settings_ev.get()
         if logstash_settings is not None:
             handler = await create_tcp_handler(logstash_settings.host, logstash_settings.port, extra={

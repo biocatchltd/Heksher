@@ -6,7 +6,7 @@ Heksher is an HTTP service, running it is best done through the
 
 .. code-block:: console
 
-    docker run -d -p 80:80 --name heksher biocatchltd/heksher -E ...
+    docker run -d -p 80:80 --name heksher -e ... biocatchltd/heksher
 
 Dependencies
 -----------------
@@ -15,7 +15,7 @@ environment variable ``HEKSHER_DB_CONNECTION_STRING`` as a driverless sqlalchemy
 
 .. code-block:: console
 
-    docker run -d -p 80:80 --name heksher biocatchltd/heksher -E HEKSHER_DB_CONNECTION_STRING=postgresql://user:password@host:port/dbname -E ...
+    docker run -d -p 80:80 --name heksher -e HEKSHER_DB_CONNECTION_STRING=postgresql://user:password@host:port/dbname -e ... biocatchltd/heksher
 
 The database must be initialized to Heksher's schema. the database's schema is handled with
 `alembic <https://alembic.sqlalchemy.org/en/latest/>`_. For convenience, the database can be initialized with
@@ -23,7 +23,7 @@ alembic using the Heksher image.
 
 .. code-block:: console
 
-    docker run biocatchltd/heksher alembic upgrade head -E HEKSHER_DB_CONNECTION_STRING=postgresql://user:password@host:port/dbname
+    docker run -e HEKSHER_DB_CONNECTION_STRING=postgresql://user:password@host:port/dbname biocatchltd/heksher alembic upgrade head
 
 .. note::
 
@@ -44,3 +44,14 @@ The following environment variables are optional for logging:
 * **HEKSHER_LOGSTASH_PORT**: the logstash port to send logs to.
 * **HEKSHER_LOGSTASH_LEVEL**: the log level to send logs on.
 * **HEKSHER_LOGSTASH_TAGS**: additional tags to send with logs.
+
+Doc Only Mode
+------------------------
+
+Heksher also has a doc-only mode, where all routes and endpoints are disabled, except fastapi's standard doc pages:
+``/redoc`` and ``/docs``. This mode can enabled by passing the environment variable ``DOC_ONLY=true``. If doc-mode is
+enabled, no connection to any underlying dependency is made, and the service will start up even if all other environment
+variables are missing.
+
+When in doc-only mode, attempting to access any api in heksher other than those above (and ``/api/health``) will result
+in a 500 error code.

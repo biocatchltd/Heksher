@@ -20,6 +20,7 @@
 * The api endpoint PUT /api/v1/rules/<rule>/value to change a rule's value
 * The api endpoint GET /api/v1/query to query rules (replaces the old query endpoint)
 * POST /api/v1/rules now returns the rule location in the header
+* added DOC_ONLY mode, read more about in the documentation
 ### Fixed
 * A bug where patching a context feature's index using "to_before" would use the incorrect target.
 ### Internal
@@ -27,6 +28,8 @@
 * tools/mk_revision.py to easily create alembic revisions
 * all db logic refactored to avoid multiple connections
 * Many more column are now strictly non-nullable
+* async-asgi-testclient is now a dev-dependency.
+* added proper image tests
 ## 0.4.1
 ### Removed
 * removed the alembic extra, it's now a requirement 

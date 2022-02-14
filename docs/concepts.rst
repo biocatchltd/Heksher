@@ -14,7 +14,7 @@ attributes:
 * metadata: additional metadata about the setting.
 * aliases: a list of :ref:`aliases <setting_aliases:Setting Aliases>` of the setting.
 * default: the default value of the setting.
-* version: the latest version of the setting declaration, see :ref:`setting_versioning:Setting Versioning`.
+* version: the latest version of the setting declaration, see :ref:`setting_versions:Setting Versions`.
 
 Context Features
 -----------------------

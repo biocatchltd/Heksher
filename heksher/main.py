@@ -24,6 +24,8 @@ async def health_check():
     """
     Check the health of the connections to the service
     """
+    if app.doc_only:
+        return JSONResponse({'version': __version__, 'doc_only': True})
     if not app.health_monitor.status:
         return JSONResponse({'version': __version__}, status_code=500)
     return {'version': __version__}

@@ -1,37 +1,13 @@
 import asyncio
 import json
-import sys
-from subprocess import run
 
 from async_asgi_testclient import TestClient
 from pytest import fixture
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine
-from yellowbox.extras.postgresql import PostgreSQLService
 
 from heksher.db_logic.metadata import context_features
 from heksher.main import app
-
-
-@fixture(scope='session')
-def sql_service(docker_client):
-    service: PostgreSQLService
-    with PostgreSQLService.run(docker_client) as service:
-        yield service
-
-
-@fixture
-def purge_sql(sql_service):
-    with sql_service.connection() as connection:
-        connection.execute(f'''
-        DROP SCHEMA public CASCADE;
-        CREATE SCHEMA public;
-        GRANT ALL ON SCHEMA public TO {sql_service.user};
-        GRANT ALL ON SCHEMA public TO public;
-        ''')
-    # we run create_all from outside to avoid alembic's side effects
-    run([sys.executable, 'alembic/from_scratch.py', sql_service.local_connection_string()], check=True)
-    yield
 
 
 @fixture
