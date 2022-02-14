@@ -12,6 +12,16 @@ Since Heksher is a FastAPI service, the API can also be accessed via the redoc e
 The most common endpoints for users are :ref:`setting declaration <api:POST /api/v1/settings/declare>`,
 and :ref:`querying <api:GET /api/v1/query>`
 
+.. note::
+
+    You can view the api in a swagger or redoc-style format locally by running heksher in :ref:`running:Doc Only Mode`
+
+    .. code-block:: console
+
+        docker run -d -p 9999:80 --name heksher-doc-only -e DOC_ONLY=true biocatchltd/heksher
+
+    and accessing http://localhost:9999/redoc or http://localhost:9999/docs
+
 General
 -------
 
@@ -399,8 +409,8 @@ Response:
     * **metadata**: A dictionary of metadata associated with the setting. Only included if include_additional_data is true.
     * **aliases**: A list aliases of the setting. Only included if include_additional_data is true.
 
-PUT /api/v1/settings/<name>/type
-********************************
+PUT /api/v1/settings/<setting_name>/type
+*******************************************
 
 Change a setting's type in a way that is not necessarily backwards compatible.
 
@@ -416,8 +426,8 @@ If there are type conflicts, the 409 response will have the schema:
 
 * **conflicts**: A list of strings describing the conflicts.
 
-PUT /api/v1/settings/<name>/name
-*********************************
+PUT /api/v1/settings/<setting_name>/name
+*********************************************
 
 Rename a setting.
 
@@ -432,7 +442,7 @@ alias to the setting and an empty 204 response will be returned.
 If the new name is already in use, or if the version is incompatible with the latest declaration, a 409 response will
 be returned.
 
-PUT /api/v1/settings/setting_name>/configurable_features
+PUT /api/v1/settings/<setting_name>/configurable_features
 ***********************************************************
 
 Change the configurable features of a setting.

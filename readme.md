@@ -43,6 +43,8 @@ Currently, Heksher supports the following environment variables:
   database's existing context features to this list (or raise an error if it cannot).
 * `HEKSHER_LOGSTASH_HOST`, `HEKSHER_LOGSTASH_PORT`, `HEKSHER_LOGSTASH_LEVEL`, `HEKSHER_LOGSTASH_TAGS`: Optional values
   to allow sending logs to a logstash server.
+* `DOC_ONLY`: set to "true" to enable doc-only mode, where the service does not actually connect to any sql database
+and only the "/redoc" and "/doc" apis function. read more about DOC_ONLY mode in the documentation.
 
 The service itself can be run from the docker image [found in dockerhub](https://hub.docker.com/repository/docker/biocatchltd/heksher).
 
@@ -53,62 +55,3 @@ The service doesn't provide any authorization/authentication as a feature. This 
 Heksher supports an HTTP interface. There are many methods that adhere to be REST-ful (and can be viewed in full by
 accessing the `/redoc` route), but the two central routes that are not REST-ful are:
 
-### PUT `/api/v1/settings/declare`
-declare that a setting exists, and create it if it doesn't.
-
-arguments:
-* name: the name of the setting.
-* configurable_features: the names of the context features that are allowed to configure this setting (list[str]).
-* type: the type of the setting.
-* default_value: optional. default value of the setting.
-* metadata: optional. additional metadata.
-
-output:
-* created: bool, whether the setting was created or it already existed.
-* rewritten: list of strings, containing whichever elements of any previous declaration was overwritten (if the setting 
-  did not exist before the call, this list is empty)
-* incomplete: a mapping of fields that were declared with incomplete data, with the complete data (which remains 
-  unchanged)
-  
-### GET `/api/v1/rules/query`
-Get a set of relevant rules.
-
-arguments:
-* setting_names: a list of setting names to retrieve (List[str])
-* context_features_options: a mapping of context features to lists of values, storing whichever context feature values to return (dict[str,List[str]]).
-* cache_time: optional. If provided, all settings that have been unedited since this time are ignored.
-* include_metadata: optional boolean (default False). If true, all rules are also provided with their metadata.
-
-output:
-* rules: A dict, mapping each setting to a list of dicts, each dict representing a rule, having the keys:
-    * value
-    * context_features
-    * metadata. only present if “include_metadata” is true.
-
-Clients should use this route at regular intervals, updating the rules for each service, to be queried in real-time from
-within the client's memory. Clients are encourage to store the rules in a nested mapping, the rules for `cache_size` in
-the above example will be stored as:
-
-```json
-{
-  "john": {
-    "*": {
-      "*":100
-    }
-  },
-  "jim": {
-    "admin": {
-      "*": 200
-    },
-    "*": {
-      "*": 50
-    }
-  },
-  "*": {
-    "guest": {
-      "dark": 20,
-      "*": 10
-    }
-  }
-}
-```

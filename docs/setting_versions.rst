@@ -14,6 +14,7 @@ the latest declared version of the setting.
   latest declaration. If the assertion fails, we inform the user of an attribute mismatch.
 * If the latest declared version is higher than the declaration version, we inform the user that they are declaring with
   outdated attributes.
+
     .. warning::
 
         Differing attributes are not checked for older versions. If a user purposely declares a setting with an older
@@ -60,5 +61,5 @@ might fail depending on the state of the ruleset of the service. If these confli
 API, our app might fail. To avoid this, these potentially conflicting changes can be made explicit with explicit API
 calls. These API endpoints are:
 
-* :ref:`PUT /api/v1/settings/setting_name>/configurable_features`
-* :ref:`PUT /api/v1/settings/setting_name>/type`
+* :ref:`api:PUT /api/v1/settings/<setting_name>/configurable_features`
+* :ref:`api:PUT /api/v1/settings/<setting_name>/type`

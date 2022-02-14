@@ -1,36 +1,89 @@
-import json
+import sys
+from threading import Thread
+
+from httpx import HTTPError, get
+from pytest import fixture
+from yellowbox.containers import get_ports, killing
+from yellowbox.image_build import build_image
+from yellowbox.retry import RetrySpec
 
 
-def _iter_build_log(build_log):
-    """Iterate over lines of the build log"""
-    remaining = b""
-    for chunk in build_log:
-        if b'\n' not in chunk:
-            remaining += chunk
-            continue
-        if remaining:
-            chunk = remaining + chunk
-            remaining = b""
-
-        str_chunk = chunk.decode("utf-8")
-        lines = str_chunk.splitlines()
-
-        if not str_chunk.endswith('\n'):
-            remaining += lines.pop().encode("utf-8")
-
-        for line in lines:
-            obj = json.loads(line)
-            stream = obj.get("stream")
-            if stream:
-                yield stream.strip()
+@fixture(scope="session")
+def image(docker_client):
+    with build_image(docker_client, 'heksher', path='.') as image:
+        yield image
 
 
-def test_image_builds(docker_client):
-    build_log = docker_client.api.build(path=".", tag='heksher:testing', rm=True)
+def test_image_builds(image):
+    pass
 
-    # Wait till build is finished.
-    for line in _iter_build_log(build_log):
-        print(line)
 
-    assert docker_client.images.get('heksher:testing')
-    docker_client.images.remove('heksher:testing', force=True, noprune=True)
+def test_startup_healthy(image, docker_client, monkeypatch, sql_service, purge_sql):
+    env = {
+        'HEKSHER_DB_CONNECTION_STRING': sql_service.host_connection_string(),
+        'HEKSHER_STARTUP_CONTEXT_FEATURES': 'user;trust;theme',
+    }
+
+    with killing(docker_client.containers.create(image, environment=env, ports={80: 0})) as container:
+        container.start()
+        log_stream = container.logs(stream=True)
+
+        def pipe():
+            for line_b in log_stream:
+                line = str(line_b, 'utf-8').strip()
+                print(line, file=sys.stderr)
+
+        pipe_thread = Thread(target=pipe)
+        pipe_thread.start()
+
+        container.reload()
+        container_port = get_ports(container)[80]
+
+        retry_spec = RetrySpec(0.5, 10)
+
+        retry_spec.retry(lambda: get(f'http://localhost:{container_port}/api/health').raise_for_status(), HTTPError)
+
+        response = get(f'http://localhost:{container_port}/api/health')
+        response.raise_for_status()
+        response = get(f'http://localhost:{container_port}/docs')
+        response.raise_for_status()
+        response = get(f'http://localhost:{container_port}/redoc')
+        response.raise_for_status()
+        response = get(f'http://localhost:{container_port}/api/v1/context_features')
+        response.raise_for_status()
+    container.remove(v=True)
+
+
+def test_startup_doc_only_healthy(image, docker_client, monkeypatch):
+    env = {
+        'DOC_ONLY': 'true'
+    }
+
+    with killing(docker_client.containers.create(image, environment=env, ports={80: 0})) as container:
+        container.start()
+        log_stream = container.logs(stream=True)
+
+        def pipe():
+            for line_b in log_stream:
+                line = str(line_b, 'utf-8').strip()
+                print(line, file=sys.stderr)
+
+        pipe_thread = Thread(target=pipe)
+        pipe_thread.start()
+
+        container.reload()
+        container_port = get_ports(container)[80]
+
+        retry_spec = RetrySpec(0.5, 10)
+
+        retry_spec.retry(lambda: get(f'http://localhost:{container_port}/api/health').raise_for_status(), HTTPError)
+
+        response = get(f'http://localhost:{container_port}/api/health')
+        response.raise_for_status()
+        response = get(f'http://localhost:{container_port}/docs')
+        response.raise_for_status()
+        response = get(f'http://localhost:{container_port}/redoc')
+        response.raise_for_status()
+        response = get(f'http://localhost:{container_port}/api/v1/context_features')
+        assert response.is_error
+    container.remove(v=True)
