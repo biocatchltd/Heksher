@@ -27,6 +27,7 @@ jobs:
 
   build_release:
     needs: [verify_version]
+    if: always()
     runs-on: ubuntu-latest
 
     steps:
