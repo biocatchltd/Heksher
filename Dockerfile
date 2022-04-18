@@ -13,6 +13,8 @@ RUN poetry config virtualenvs.create false
 COPY pyproject.toml poetry.lock ./
 RUN poetry run pip install --upgrade pip
 RUN poetry install --no-dev --no-root
+# poetry removes its own dependencies, so we need to install them again
+RUN pip install requests
 
 COPY . /usr/src/app/heksher
 

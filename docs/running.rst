@@ -6,7 +6,7 @@ Heksher is an HTTP service, running it is best done through the
 
 .. code-block:: console
 
-    docker run -d -p 80:80 --name heksher -e ... biocatchltd/heksher
+    docker run -d -p 80:80 --name heksher -e ... biocatchltd/heksher:latest
 
 Dependencies
 -----------------
@@ -15,7 +15,7 @@ environment variable ``HEKSHER_DB_CONNECTION_STRING`` as a driverless sqlalchemy
 
 .. code-block:: console
 
-    docker run -d -p 80:80 --name heksher -e HEKSHER_DB_CONNECTION_STRING=postgresql://user:password@host:port/dbname -e ... biocatchltd/heksher
+    docker run -d -p 80:80 --name heksher -e HEKSHER_DB_CONNECTION_STRING=postgresql://user:password@host:port/dbname -e ... biocatchltd/heksher:latest
 
 The database must be initialized to Heksher's schema. the database's schema is handled with
 `alembic <https://alembic.sqlalchemy.org/en/latest/>`_. For convenience, the database can be initialized with
@@ -23,7 +23,7 @@ alembic using the Heksher image.
 
 .. code-block:: console
 
-    docker run -e HEKSHER_DB_CONNECTION_STRING=postgresql://user:password@host:port/dbname biocatchltd/heksher alembic upgrade head
+    docker run -e HEKSHER_DB_CONNECTION_STRING=postgresql://user:password@host:port/dbname biocatchltd/heksher:latest alembic upgrade head
 
 .. note::
 

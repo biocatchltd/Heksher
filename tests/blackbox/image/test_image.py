@@ -45,6 +45,7 @@ def test_startup_healthy(image, docker_client, monkeypatch, sql_service, purge_s
 
         response = get(f'http://localhost:{container_port}/api/health')
         response.raise_for_status()
+        assert response.json()['version']
         response = get(f'http://localhost:{container_port}/docs')
         response.raise_for_status()
         response = get(f'http://localhost:{container_port}/redoc')
@@ -80,6 +81,7 @@ def test_startup_doc_only_healthy(image, docker_client, monkeypatch):
 
         response = get(f'http://localhost:{container_port}/api/health')
         response.raise_for_status()
+        assert response.json()['version']
         response = get(f'http://localhost:{container_port}/docs')
         response.raise_for_status()
         response = get(f'http://localhost:{container_port}/redoc')

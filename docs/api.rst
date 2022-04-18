@@ -18,7 +18,7 @@ and :ref:`querying <api:GET /api/v1/query>`
 
     .. code-block:: console
 
-        docker run -d -p 9999:80 --name heksher-doc-only -e DOC_ONLY=true biocatchltd/heksher
+        docker run -d -p 9999:80 --name heksher-doc-only -e DOC_ONLY=true biocatchltd/heksher:latest
 
     and accessing http://localhost:9999/redoc or http://localhost:9999/docs
 
