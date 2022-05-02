@@ -1,7 +1,7 @@
 # Heksher Changelog
-## 0.5.2
-* Added a generic handler for unhandled errors
 ## 0.5.1
+### Added
+* Added a generic handler for unhandled errors
 ### Fixed
 * fixed an issue where the version would be blank in api
 ## 0.5.0 (REQ alembic upgrade)
