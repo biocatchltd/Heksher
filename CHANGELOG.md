@@ -1,4 +1,6 @@
 # Heksher Changelog
+## 0.5.2
+* Added a generic handler for unhandled errors
 ## 0.5.1
 ### Fixed
 * fixed an issue where the version would be blank in api

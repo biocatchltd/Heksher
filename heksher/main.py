@@ -1,5 +1,6 @@
+from logging import getLogger
 from starlette.responses import JSONResponse
-
+from fastapi.exception_handlers import http_exception_handler
 from heksher._version import __version__
 from heksher.api.v1 import router as v1_router
 from heksher.app import HeksherApp
@@ -7,6 +8,8 @@ from heksher.app import HeksherApp
 app = HeksherApp(title="Heksher", version=__version__ or "0.0.1")
 
 app.include_router(v1_router)
+
+logger = getLogger(__name__)
 
 
 @app.on_event('startup')
@@ -29,6 +32,12 @@ async def health_check():
     if not app.health_monitor.status:
         return JSONResponse({'version': __version__}, status_code=500)
     return {'version': __version__}
+
+
+@app.exception_handler(Exception)
+async def handle_exception(request, exc):
+    logger.exception('unhandled exception', exc_info=exc, extra={'scope': request.scope})
+    return await http_exception_handler(request, exc)
 
 
 def main():
