@@ -7,11 +7,11 @@ authors = ["Biocatch LTD <serverteam@biocatch.com>"]
 [tool.poetry.dependencies]
 python = "~3.8"
 
-fastapi = "^0.67.0"
-httpx = "^0.16.0"
+fastapi = "^0.76.0"
+httpx = "^0.22.0"
 orjson = "^3.4.0"
 pydantic = "^1.7.0"
-uvicorn = "^0.13.2"
+uvicorn = "^0.17.6"
 envolved = "^0.3.0"
 
 SQLAlchemy = "^1.4.21"
@@ -25,7 +25,7 @@ psycopg2 = "^2.9.2"
 [tool.poetry.dev-dependencies]
 async-asgi-testclient = "^1.4.6"
 pytest-cov = "^2.10"
-flake8 = "^3.8.4"
+flake8 = "^4.0.1"
 requests = "^2.25.1"
 yellowbox = {extras = ["postgresql"], version = "^0.6.4"}
 mypy = "^0.902"
