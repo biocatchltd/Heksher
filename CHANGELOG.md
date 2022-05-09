@@ -6,6 +6,7 @@
 * fixed an issue where the version would be blank in api
 ### Internal
 * image size has been reduced
+* updated dependencies
 ## 0.5.0 (REQ alembic upgrade)
 ### Removed
 * old api endpoint POST /api/v1/rules/query has been removed and replaced with GET /api/v1/query
