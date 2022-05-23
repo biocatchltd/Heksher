@@ -5,7 +5,7 @@ from typing import Sequence
 
 import orjson
 import sentry_sdk
-from aiologstash import create_tcp_handler
+from aiologstash2 import create_tcp_handler
 from envolved import EnvVar, Schema
 from envolved.parsers import CollectionParser
 from fastapi import FastAPI, Request

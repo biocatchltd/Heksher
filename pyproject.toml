@@ -5,7 +5,7 @@ description = "Heksker"
 authors = ["Biocatch LTD <serverteam@biocatch.com>"]
 
 [tool.poetry.dependencies]
-python = "~3.8"
+python = "~3.10"
 
 fastapi = "^0.76.0"
 httpx = "^0.22.0"
@@ -16,19 +16,19 @@ envolved = "^0.3.0"
 
 SQLAlchemy = "^1.4.21"
 asyncpg = "^0.23.0"
-aiologstash = "^2.0.0"
 sentry-sdk = "^1.1.0"
 
 alembic = "^1.4.3"
 psycopg2 = "^2.9.2"
+aiologstash2 = "^2.0.1"
 
 [tool.poetry.dev-dependencies]
 async-asgi-testclient = "^1.4.6"
 pytest-cov = "^2.10"
-flake8 = "^4.0.1"
+flake8 = "*"
 requests = "^2.25.1"
-yellowbox = {extras = ["postgresql"], version = "^0.6.4"}
-mypy = "^0.902"
+yellowbox = {extras = ["postgresql"], version = "^0.7.0"}
+mypy = "*"
 types-orjson = "^0.1.1"
 isort = "^5.9.1"
 Sphinx = "^4.3.1"
