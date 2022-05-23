@@ -2,6 +2,7 @@ import sys
 from subprocess import run
 
 from pytest import fixture
+from sqlalchemy import create_engine
 from yellowbox import docker_client as _docker_client
 from yellowbox.extras.postgresql import PostgreSQLService
 
@@ -19,9 +20,16 @@ def sql_service(docker_client):
         yield service
 
 
+@fixture(scope='session')
+def sql_engine(sql_service):
+    service = create_engine(sql_service.local_connection_string())
+    yield service
+    service.dispose()
+
+
 @fixture
-def purge_sql(sql_service):
-    with sql_service.connection() as connection:
+def purge_sql(sql_service, sql_engine):
+    with sql_engine.connect() as connection:
         connection.execute(f'''
         DROP SCHEMA public CASCADE;
         CREATE SCHEMA public;

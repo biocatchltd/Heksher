@@ -7,6 +7,7 @@
 ### Internal
 * image size has been reduced
 * updated dependencies
+* now based on python 3.10
 ## 0.5.0 (REQ alembic upgrade)
 ### Removed
 * old api endpoint POST /api/v1/rules/query has been removed and replaced with GET /api/v1/query

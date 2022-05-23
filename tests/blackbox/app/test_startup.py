@@ -1,8 +1,8 @@
 from asyncio import sleep
 from logging import getLogger
 
-import aiologstash
-from aiologstash import create_tcp_handler
+import aiologstash2
+from aiologstash2 import create_tcp_handler
 from async_asgi_testclient import TestClient
 from pytest import mark, raises
 from yellowbox.extras.logstash import FakeLogstashService
@@ -12,11 +12,11 @@ from heksher.main import app
 
 
 @mark.asyncio
-async def test_startup_existing_contexts(monkeypatch, sql_service, purge_sql):
+async def test_startup_existing_contexts(monkeypatch, sql_service, sql_engine, purge_sql):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
-    with sql_service.connection() as connection:
+    with sql_engine.connect() as connection:
         connection.execute("""
         INSERT into context_features VALUES ('user', 0), ('trust', 1), ('theme', 2);
         """)
@@ -26,11 +26,11 @@ async def test_startup_existing_contexts(monkeypatch, sql_service, purge_sql):
 
 
 @mark.asyncio
-async def test_startup_existing_unexpected_contexts(monkeypatch, sql_service, purge_sql):
+async def test_startup_existing_unexpected_contexts(monkeypatch, sql_service, sql_engine, purge_sql):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
-    with sql_service.connection() as connection:
+    with sql_engine.connect() as connection:
         connection.execute("""
         INSERT into context_features VALUES ('user', 0), ('trust', 1), ('theme', 2), ('color', 3);
         """)
@@ -42,11 +42,11 @@ async def test_startup_existing_unexpected_contexts(monkeypatch, sql_service, pu
 
 
 @mark.asyncio
-async def test_startup_existing_bad_order(monkeypatch, sql_service, purge_sql):
+async def test_startup_existing_bad_order(monkeypatch, sql_service, sql_engine, purge_sql):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
-    with sql_service.connection() as connection:
+    with sql_engine.connect() as connection:
         connection.execute("""
         INSERT into context_features VALUES ('user', 0), ('trust', 2), ('theme', 1);
         """)
@@ -57,11 +57,11 @@ async def test_startup_existing_bad_order(monkeypatch, sql_service, purge_sql):
 
 
 @mark.asyncio
-async def test_startup_existing_contexts_with_bad_indices(monkeypatch, sql_service, purge_sql):
+async def test_startup_existing_contexts_with_bad_indices(monkeypatch, sql_service, sql_engine, purge_sql):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
-    with sql_service.connection() as connection:
+    with sql_engine.connect() as connection:
         connection.execute("""
         INSERT into context_features VALUES ('user', 0), ('trust', 3), ('theme', 5);
         """)
@@ -69,7 +69,7 @@ async def test_startup_existing_contexts_with_bad_indices(monkeypatch, sql_servi
     async with TestClient(app):
         pass
 
-    with sql_service.connection() as connection:
+    with sql_engine.connect() as connection:
         results = connection.execute("""
         SELECT * FROM context_features;
         """)
@@ -82,11 +82,11 @@ async def test_startup_existing_contexts_with_bad_indices(monkeypatch, sql_servi
 
 
 @mark.asyncio
-async def test_startup_existing_contexts_new_contexts(monkeypatch, sql_service, purge_sql):
+async def test_startup_existing_contexts_new_contexts(monkeypatch, sql_service, sql_engine, purge_sql):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
-    with sql_service.connection() as connection:
+    with sql_engine.connect() as connection:
         connection.execute("""
         INSERT into context_features VALUES ('trust', 0);
         """)
@@ -94,7 +94,7 @@ async def test_startup_existing_contexts_new_contexts(monkeypatch, sql_service, 
     async with TestClient(app):
         pass
 
-    with sql_service.connection() as connection:
+    with sql_engine.connect() as connection:
         results = connection.execute("""
         SELECT * FROM context_features;
         """)
@@ -123,7 +123,7 @@ async def test_startup_logstash(monkeypatch, sql_service, purge_sql):
             handler = await create_tcp_handler(*args, **kwargs)
             return handler
 
-        monkeypatch.setattr(aiologstash, 'create_tcp_handler', mock_create_handler)
+        monkeypatch.setattr(aiologstash2, 'create_tcp_handler', mock_create_handler)
 
         async with TestClient(app):
             await sleep(0.1)  # wait for logstash records
