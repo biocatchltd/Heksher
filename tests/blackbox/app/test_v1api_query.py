@@ -253,7 +253,27 @@ async def test_query_rules_bad_contexts(app_client, setup_rules):
         'settings': 'a,long_setting_name',
         'context_filters': 'theme:(black),trust:(full,part),love:(overflowing)'
     })
-    assert res.status_code == 404
+    res.raise_for_status()
+    expected = {
+        'settings': {
+            'a': {'default_value': 0,
+                  'rules': [
+                      {'context_features': [['trust', 'full']],
+                       'rule_id': 1,
+                       'value': 1},
+                      {'context_features': [['theme', 'black']],
+                       'rule_id': 2,
+                       'value': 2},
+                      {'context_features': [['trust', 'full'],
+                                            ['theme', 'black']],
+                       'rule_id': 3,
+                       'value': 3}]},
+            'long_setting_name': {'default_value': 0,
+                                  'rules': [{'context_features': [['trust', 'part']],
+                                             'rule_id': 5,
+                                             'value': 5}]}}
+    }
+    assert res.json() == expected
 
 
 @mark.asyncio

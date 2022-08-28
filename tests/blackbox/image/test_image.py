@@ -10,7 +10,7 @@ from yellowbox.retry import RetrySpec
 
 @fixture(scope="session")
 def image(docker_client):
-    with build_image(docker_client, 'heksher', path='.') as image:
+    with build_image(docker_client, 'heksher', path='.', remove_image=False) as image:
         yield image
 
 
