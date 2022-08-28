@@ -17,6 +17,7 @@ from heksher.db_logic.setting import db_get_canonical_names, db_get_settings
 
 logger = getLogger(__name__)
 
+
 # https://github.com/tiangolo/fastapi/issues/2724
 class QueryRulesOutput_Rule(ORJSONModel):
     value: Any = Field(description="the value of the setting in contexts where the rule matches")

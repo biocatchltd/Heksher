@@ -8,7 +8,6 @@ authors = ["Biocatch LTD <serverteam@biocatch.com>"]
 python = "~3.10"
 
 fastapi = "^0.76.0"
-httpx = "^0.22.0"
 orjson = "^3.4.0"
 pydantic = "^1.7.0"
 uvicorn = "^0.17.6"
@@ -24,6 +23,7 @@ aiologstash2 = "^2.0.1"
 
 [tool.poetry.dev-dependencies]
 async-asgi-testclient = "^1.4.6"
+httpx = "^0.23.0"
 pytest-cov = "^2.10"
 flake8 = "*"
 requests = "^2.25.1"
