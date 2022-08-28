@@ -1,4 +1,5 @@
 import re
+from logging import getLogger
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from fastapi import Query
@@ -13,6 +14,8 @@ from heksher.app import HeksherApp
 from heksher.db_logic.context_feature import db_get_not_found_context_features
 from heksher.db_logic.rule import db_query_rules
 from heksher.db_logic.setting import db_get_canonical_names, db_get_settings
+
+logger = getLogger(__name__)
 
 
 # https://github.com/tiangolo/fastapi/issues/2724
@@ -117,8 +120,10 @@ async def query_rules(request: Request, app: HeksherApp = application,
 
             not_context_features = await db_get_not_found_context_features(conn, context_features_options)
             if not_context_features:
-                return PlainTextResponse(f'the following are not valid context features: {not_context_features}',
-                                         status_code=status.HTTP_404_NOT_FOUND)
+                logger.info("unknown context features included in query",
+                            extra={'unknown_context_features': list(not_context_features)})
+                for cf in not_context_features:
+                    del context_features_options[cf]
         results = await db_query_rules(conn, settings, context_features_options, include_metadata)
     if include_metadata:
         ret: Union[QueryRulesOutputWithMetadata, QueryRulesOutput] = QueryRulesOutputWithMetadata(

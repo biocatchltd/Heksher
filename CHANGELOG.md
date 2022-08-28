@@ -1,4 +1,9 @@
 # Heksher Changelog
+## 0.5.2
+### Changed
+* sending unknown context features in a query is no longer an error
+* httpx is now a dev-dependency
+* Docker container now runs with a limited user
 ## 0.5.1
 ### Added
 * Added a generic handler for unhandled errors
