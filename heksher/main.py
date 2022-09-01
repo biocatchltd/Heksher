@@ -3,8 +3,8 @@ from logging import getLogger
 from fastapi import HTTPException
 from fastapi.exception_handlers import http_exception_handler
 from starlette.datastructures import MutableHeaders
-from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 
 from heksher._version import __version__
 from heksher.api.v1 import router as v1_router
