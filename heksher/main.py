@@ -1,7 +1,10 @@
 from logging import getLogger
 
+from fastapi import HTTPException
 from fastapi.exception_handlers import http_exception_handler
-from starlette.responses import JSONResponse
+from starlette.datastructures import MutableHeaders
+from starlette.responses import JSONResponse, Response
+from starlette.requests import Request
 
 from heksher._version import __version__
 from heksher.api.v1 import router as v1_router
@@ -40,6 +43,27 @@ async def health_check():
 async def handle_exception(request, exc):
     logger.exception('unhandled exception', exc_info=exc, extra={'scope': request.scope})
     return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(HTTPException)
+async def ret(request: Request, exc: HTTPException) -> Response:
+    # fastapi's default event handler is bugged (https://github.com/tiangolo/fastapi/issues/4946)
+    headers = getattr(exc, "headers", None)
+    if headers:
+        headers = MutableHeaders(headers)
+        del headers['content-length']
+        del headers['content-type']
+    if exc.status_code in {204, 304}:
+        if headers:
+            return Response(status_code=exc.status_code, headers=headers)
+        else:
+            return Response(status_code=exc.status_code)
+    if headers:
+        return JSONResponse(
+            {"detail": exc.detail}, status_code=exc.status_code, headers=headers
+        )
+    else:
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
 
 def main():
