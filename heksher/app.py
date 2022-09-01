@@ -19,7 +19,7 @@ from heksher.db_logic.util import supersequence_new_elements
 from heksher.health_monitor import HealthMonitor
 from heksher.util import db_url_with_async_driver
 
-logger = getLogger(__name__)
+logger = getLogger('heksher')
 
 connection_string = EnvVar('HEKSHER_DB_CONNECTION_STRING', type=db_url_with_async_driver)
 startup_context_features = EnvVar('HEKSHER_STARTUP_CONTEXT_FEATURES', type=CollectionParser(';', str), default=None)

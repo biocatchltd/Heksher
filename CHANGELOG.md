@@ -6,6 +6,7 @@
 * Docker container now runs with a limited user
 ### Fixed
 * returning 304 no longer logs an error "Too much data for declared Content-Length"
+* most logs were incorrectly sent under the wrong logger name
 ## 0.5.1
 ### Added
 * Added a generic handler for unhandled errors
