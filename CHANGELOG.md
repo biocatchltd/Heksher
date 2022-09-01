@@ -4,6 +4,8 @@
 * sending unknown context features in a query is no longer an error
 * httpx is now a dev-dependency
 * Docker container now runs with a limited user
+### Fixed
+* returning 304 no longer logs an error "Too much data for declared Content-Length"
 ## 0.5.1
 ### Added
 * Added a generic handler for unhandled errors

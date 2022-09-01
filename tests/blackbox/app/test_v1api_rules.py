@@ -247,7 +247,7 @@ async def test_query_etag(app_client, setup_rules, metadata):
 
     assert repeat_resp.status_code == 304
     assert repeat_resp.headers['ETag'] == etag
-    assert repeat_resp.content == b'{"detail":"Not Modified"}'
+    assert not repeat_resp.content
 
 
 @mark.asyncio
@@ -284,7 +284,7 @@ async def test_query_etag_wildcard(app_client, setup_rules, metadata):
     }, headers={'If-None-Match': '*'})
 
     assert repeat_resp.status_code == 304
-    assert repeat_resp.content == b'{"detail":"Not Modified"}'
+    assert not repeat_resp.content
 
 
 @mark.asyncio
