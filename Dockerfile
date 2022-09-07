@@ -23,7 +23,4 @@ RUN export APP_VERSION=$(poetry version | cut -d' ' -f2) && echo "__version__ = 
 ENV PYTHONPATH=${PYTHONPATH}:/usr/src/app/heksher
 ENV PYTHONOPTIMIZE=1
 
-RUN useradd --uid 10000 runner
-USER 10000
-
 CMD ["uvicorn", "heksher.main:app", "--host", "0.0.0.0", "--port", "80"]
