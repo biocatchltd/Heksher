@@ -48,7 +48,7 @@ def upgrade():
                         )
     connection = op.get_bind()
     existing_setting_metadata = connection.execute(
-        sa.select([settings.c.name, settings.c.metadata])
+        sa.select(settings.c.name, settings.c.metadata)
     )
     op.bulk_insert(
         setting_metadata,
@@ -57,7 +57,7 @@ def upgrade():
          for (k, v) in orjson.loads(md_str).items()]
     )
     existing_rule_metadata = connection.execute(
-        sa.select([rules.c.id, rules.c.metadata])
+        sa.select(rules.c.id, rules.c.metadata)
     )
     op.bulk_insert(
         rule_metadata,

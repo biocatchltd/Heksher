@@ -48,7 +48,7 @@ async def search_rule(app: HeksherApp = application,
     """
     Get the ID of a rule with specific conditions.
     """
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         canon_setting = await db_get_setting(conn, setting, include_metadata=False, include_configurable_features=False,
                                              include_aliases=False)  # for aliasing
         if not canon_setting:
@@ -145,7 +145,7 @@ class GetRuleOutput(ORJSONModel):
 
 @router.get('/{rule_id}', response_model=GetRuleOutput)
 async def get_rule(rule_id: int, app: HeksherApp = application):
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         rule_spec = await db_get_rule(conn, rule_id, include_metadata=True)
 
         if not rule_spec:

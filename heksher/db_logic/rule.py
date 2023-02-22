@@ -5,7 +5,7 @@ from operator import itemgetter
 from typing import Any, Dict, List, Mapping, NamedTuple, Optional, Sequence, Tuple
 
 import orjson
-from sqlalchemy import and_, func, join, not_, select, tuple_
+from sqlalchemy import ColumnElement, and_, false, func, join, not_, select, true, tuple_
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from heksher.db_logic.metadata import conditions, context_features, rule_metadata, rules
@@ -35,23 +35,23 @@ class BareRuleSpec(NamedTuple):
 
 async def db_get_rule(conn: AsyncConnection, id_: int, include_metadata: bool) -> Optional[RuleSpec]:
     basic_results = (await conn.execute(
-        select([rules.c.setting, rules.c.value]).where(rules.c.id == id_).limit(1)
+        select(rules.c.setting, rules.c.value).where(rules.c.id == id_).limit(1)
     )).mappings().first()
     if not basic_results:
         # rule does not exist
         return None
     feature_values = (await conn.execute(
-        select([conditions.c.context_feature, conditions.c.feature_value])
+        select(conditions.c.context_feature, conditions.c.feature_value)
         .select_from(join(conditions, context_features,
                           conditions.c.context_feature == context_features.c.name))
         .where(conditions.c.rule == id_)
         .order_by(context_features.c.index)
     )).mappings().all()
     if include_metadata:
-        metadata_ = dict((await conn.execute(
-            select([rule_metadata.c.key, rule_metadata.c.value])
+        metadata_: Optional[Dict[str, Any]] = dict((await conn.execute(
+            select(rule_metadata.c.key, rule_metadata.c.value)
             .where(rule_metadata.c.rule == id_)
-        )).all())
+        )).all())  # type: ignore[arg-type]
     else:
         metadata_ = None
 
@@ -66,7 +66,7 @@ async def db_get_rule(conn: AsyncConnection, id_: int, include_metadata: bool) -
 
 async def db_get_rules_feature_values(conn: AsyncConnection, ids: List[int]) -> Mapping[int, Sequence[Tuple[str, str]]]:
     feature_values = (await conn.execute(
-        select([conditions.c.rule, conditions.c.context_feature, conditions.c.feature_value])
+        select(conditions.c.rule, conditions.c.context_feature, conditions.c.feature_value)
         .select_from(join(conditions, context_features,
                           conditions.c.context_feature == context_features.c.name))
         .where(conditions.c.rule.in_(ids))
@@ -178,10 +178,10 @@ async def db_query_rules(conn: AsyncConnection, setting_names: List[str],
         # it will not be returned
         if feature_value_options is None:
             # match all
-            inv_match = False
+            inv_match: ColumnElement[bool] = false()
         elif not feature_value_options:
             # match none
-            inv_match = True
+            inv_match = true()
         else:
             exact_tuple_conditions = []
             only_cf_conditions = []
@@ -199,7 +199,7 @@ async def db_query_rules(conn: AsyncConnection, setting_names: List[str],
             else:
                 inv_match = tuple_conditions if exact_tuple_conditions else cf_conditions
 
-        clauses = [
+        clauses: List[ColumnElement[bool]] = [
             not_(conditions_.select()
                  .where(
                 and_(
@@ -229,7 +229,7 @@ async def db_query_rules(conn: AsyncConnection, setting_names: List[str],
 
         # finally, get all the actual data for each rule
         rule_query = (
-            select([rules.c.id, rules.c.setting, rules.c.value])
+            select(rules.c.id, rules.c.setting, rules.c.value)
             .where(rules.c.id.in_(applicable_rules))
             .order_by(rules.c.setting, rules.c.id)
         )
@@ -237,7 +237,7 @@ async def db_query_rules(conn: AsyncConnection, setting_names: List[str],
 
         if include_metadata:
             metadata_results = (await conn.execute(
-                select([rule_metadata.c.rule, rule_metadata.c.key, rule_metadata.c.value])
+                select(rule_metadata.c.rule, rule_metadata.c.key, rule_metadata.c.value)
                 .where(rule_metadata.c.rule.in_(applicable_rules))
                 .order_by(rule_metadata.c.rule)
             )).all()
@@ -264,7 +264,7 @@ async def db_query_rules(conn: AsyncConnection, setting_names: List[str],
 
 
 async def db_get_rules_for_setting(conn: AsyncConnection, setting_name: str) -> Sequence[BareRuleSpec]:
-    result = (await conn.execute(select([rules.c.id, rules.c.value]).where(rules.c.setting == setting_name))).all()
+    result = (await conn.execute(select(rules.c.id, rules.c.value).where(rules.c.setting == setting_name))).all()
     return [BareRuleSpec(id_, orjson.loads(v)) for id_, v in result]
 
 
@@ -273,7 +273,7 @@ async def db_get_actual_configurable_features(conn: AsyncConnection, setting_nam
     Get all the rules that are configured for each context feature for a setting
     """
     results = (await conn.execute(
-        select([conditions.c.context_feature, rules.c.id])
+        select(conditions.c.context_feature, rules.c.id)
         .select_from(rules.join(conditions, rules.c.id == conditions.c.rule))
         .where(rules.c.setting == setting_name)
         .order_by(conditions.c.context_feature)

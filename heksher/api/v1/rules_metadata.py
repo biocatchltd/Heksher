@@ -103,7 +103,7 @@ async def get_rule_metadata(rule_id: int, app: HeksherApp = application):
     """
     Get metadata of a rule.
     """
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         if not (rule := await db_get_rule(conn, rule_id, include_metadata=True)):
             return Response(status_code=status.HTTP_404_NOT_FOUND)
         return GetRuleMetadataOutput(metadata=rule.metadata)

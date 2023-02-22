@@ -1,7 +1,7 @@
 import re
 from asyncio import wait_for
 from logging import INFO, getLogger
-from typing import Sequence
+from typing import Dict, Sequence
 
 import orjson
 import sentry_sdk
@@ -55,9 +55,9 @@ class HeksherApp(FastAPI):
     doc_only: bool
 
     async def ensure_context_features(self, expected_context_features: Sequence[str]):
-        async with self.engine.connect() as conn:
+        async with self.engine.begin() as conn:
             existing_features = await db_get_context_features(conn)
-        actual = dict(existing_features)
+        actual: Dict[str, int] = dict(existing_features)  # type: ignore[arg-type]
         super_sequence = supersequence_new_elements(expected_context_features, actual)
         if super_sequence is None:
             raise RuntimeError(f'expected context features to be a subsequence of {expected_context_features}, '

@@ -5,6 +5,7 @@ import aiologstash2
 from aiologstash2 import create_tcp_handler
 from async_asgi_testclient import TestClient
 from pytest import mark, raises
+from sqlalchemy import text
 from yellowbox.extras.logstash import FakeLogstashService
 
 from heksher._version import __version__
@@ -16,10 +17,10 @@ async def test_startup_existing_contexts(monkeypatch, sql_service, sql_engine, p
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
-    with sql_engine.connect() as connection:
-        connection.execute("""
+    with sql_engine.begin() as connection:
+        connection.execute(text("""
         INSERT into context_features VALUES ('user', 0), ('trust', 1), ('theme', 2);
-        """)
+        """))
 
     async with TestClient(app):
         pass
@@ -30,10 +31,10 @@ async def test_startup_existing_unexpected_contexts(monkeypatch, sql_service, sq
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
-    with sql_engine.connect() as connection:
-        connection.execute("""
+    with sql_engine.begin() as connection:
+        connection.execute(text("""
         INSERT into context_features VALUES ('user', 0), ('trust', 1), ('theme', 2), ('color', 3);
-        """)
+        """))
 
     with raises(Exception):
         ''' async_asgi_testclient raises Exception for any exception on startup, so we can't be more specific  '''
@@ -46,10 +47,10 @@ async def test_startup_existing_bad_order(monkeypatch, sql_service, sql_engine, 
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
-    with sql_engine.connect() as connection:
-        connection.execute("""
+    with sql_engine.begin() as connection:
+        connection.execute(text("""
         INSERT into context_features VALUES ('user', 0), ('trust', 2), ('theme', 1);
-        """)
+        """))
 
     with raises(Exception):
         async with TestClient(app):
@@ -61,19 +62,19 @@ async def test_startup_existing_contexts_with_bad_indices(monkeypatch, sql_servi
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
-    with sql_engine.connect() as connection:
-        connection.execute("""
+    with sql_engine.begin() as connection:
+        connection.execute(text("""
         INSERT into context_features VALUES ('user', 0), ('trust', 3), ('theme', 5);
-        """)
+        """))
 
     async with TestClient(app):
         pass
 
-    with sql_engine.connect() as connection:
-        results = connection.execute("""
+    with sql_engine.begin() as connection:
+        results = connection.execute(text("""
         SELECT * FROM context_features;
-        """)
-    rows = {row['name']: row['index'] for row in results}
+        """))
+    rows = {row['name']: row['index'] for row in results.mappings()}
     assert rows == {
         'user': 0,
         'trust': 1,
@@ -86,19 +87,19 @@ async def test_startup_existing_contexts_new_contexts(monkeypatch, sql_service, 
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
-    with sql_engine.connect() as connection:
-        connection.execute("""
+    with sql_engine.begin() as connection:
+        connection.execute(text("""
         INSERT into context_features VALUES ('trust', 0);
-        """)
+        """))
 
     async with TestClient(app):
         pass
 
-    with sql_engine.connect() as connection:
-        results = connection.execute("""
-        SELECT * FROM context_features;
-        """)
-    rows = {row['name']: row['index'] for row in results}
+    with sql_engine.begin() as connection:
+        results = connection.execute(text("""
+            SELECT * FROM context_features;
+        """))
+    rows = {row['name']: row['index'] for row in results.mappings()}
     assert rows == {
         'user': 0,
         'trust': 1,

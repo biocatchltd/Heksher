@@ -2,6 +2,7 @@ import json
 from itertools import chain
 
 from pytest import fixture, mark
+from sqlalchemy import text
 
 
 @fixture
@@ -84,13 +85,13 @@ async def test_query_rules(metadata: bool, app_client, setup_rules):
 @mark.asyncio
 @mark.parametrize('metadata', [False, True])
 async def test_query_rules_with_empty(metadata: bool, app_client, setup_rules, sql_service, sql_engine):
-    with sql_engine.connect() as connection:
-        connection.execute("""
+    with sql_engine.begin() as connection:
+        connection.execute(text("""
         INSERT INTO rules (setting, value) VALUES ('long_setting_name', '10')
-        """)
-        connection.execute("""
+        """))
+        connection.execute(text("""
         INSERT INTO rule_metadata (rule, key, value) VALUES (8, 'test', '"yes"')
-        """)
+        """))
 
     res = await app_client.get('/api/v1/query', query_string={
         'settings': 'a,long_setting_name',
@@ -139,13 +140,13 @@ async def test_query_rules_nooptions(metadata: bool, app_client, setup_rules):
 @mark.asyncio
 @mark.parametrize('metadata', [False, True])
 async def test_query_rules_nooptions_with_matchall(metadata: bool, app_client, setup_rules, sql_service, sql_engine):
-    with sql_engine.connect() as connection:
-        connection.execute("""
+    with sql_engine.begin() as connection:
+        connection.execute(text("""
         INSERT INTO rules (setting, value) VALUES ('long_setting_name', '10')
-        """)
-        connection.execute("""
+        """))
+        connection.execute(text("""
         INSERT INTO rule_metadata (rule, key, value) VALUES (8, 'test', '"yes"')
-        """)
+        """))
 
     res = await app_client.get('/api/v1/query', query_string={
         'settings': 'a,long_setting_name',

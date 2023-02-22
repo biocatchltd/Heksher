@@ -1,7 +1,7 @@
 from logging import getLogger
 from typing import AbstractSet, Iterable, Mapping, Optional, Sequence, Tuple
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import Row, and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from heksher.db_logic.metadata import configurable, context_features
@@ -14,13 +14,13 @@ async def db_move_context_features(conn: AsyncConnection, new_indices: Mapping[s
     Update the indices of all the context features in the database. The new indices are given by the mapping
     new_indices. new_indices must include at least all the context features in the database.
     """
-    new_index = case([(context_features.c.name == name, index) for (name, index) in new_indices.items()])
+    new_index = case(*[(context_features.c.name == name, index) for (name, index) in new_indices.items()])
     await conn.execute(context_features.update().values(index=new_index))
 
 
-async def db_get_context_features(conn: AsyncConnection) -> Sequence[Tuple[str, int]]:
+async def db_get_context_features(conn: AsyncConnection) -> Sequence[Row[Tuple[str, int]]]:
     return (await conn.execute(
-        select([context_features.c.name, context_features.c.index]).order_by(context_features.c.index),
+        select(context_features.c.name, context_features.c.index).order_by(context_features.c.index),
     )).all()
 
 
@@ -30,13 +30,13 @@ async def db_get_not_found_context_features(conn: AsyncConnection, candidates: I
 
 
 async def db_get_context_feature_index(conn: AsyncConnection, context_feature: str) -> Optional[int]:
-    return (await conn.execute(select([context_features.c.index])
+    return (await conn.execute(select(context_features.c.index)
                                .where(context_features.c.name == context_feature))).scalar_one_or_none()
 
 
 async def db_is_configurable_setting_from_context_features(conn: AsyncConnection, context_feature: str):
     setting_of_cf = (
-        (await conn.execute(select([configurable.c.setting])
+        (await conn.execute(select(configurable.c.setting)
                             .where(configurable.c.context_feature == context_feature)))
         .scalar_one_or_none()
     )
@@ -92,7 +92,7 @@ async def db_move_after_context_feature(conn: AsyncConnection, index_to_move: in
 
 async def db_add_context_feature_to_end(conn: AsyncConnection, context_feature: str):
     last_index = (await conn.execute(
-        select([func.max(context_features.c.index)]),
+        select(func.max(context_features.c.index)),
     )).scalar_one()
     await db_add_context_features(conn, {context_feature: last_index + 1})
 
