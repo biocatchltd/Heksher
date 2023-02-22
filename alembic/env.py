@@ -61,7 +61,7 @@ def run_migrations_online():
     url = getenv('HEKSHER_DB_CONNECTION_STRING', 'sqlite://')
     connectable = create_engine(url)
 
-    with connectable.connect() as connection:
+    with connectable.begin() as connection:
         context.configure(
             connection=connection, target_metadata=target_metadata
         )

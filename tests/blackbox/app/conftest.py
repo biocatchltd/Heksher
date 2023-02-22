@@ -15,8 +15,8 @@ async def check_indexes_of_cf(sql_service):
     yield
     sql_connection_string = sql_service.local_connection_string(driver="asyncpg")
     engine = create_async_engine(sql_connection_string)
-    async with engine.connect() as conn:
-        rows = (await conn.execute(select([context_features.c.index])
+    async with engine.begin() as conn:
+        rows = (await conn.execute(select(context_features.c.index)
                                    .order_by(context_features.c.index))).scalars().all()
     assert rows == list(range(len(rows)))
 

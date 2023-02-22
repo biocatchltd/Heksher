@@ -30,7 +30,7 @@ async def update_setting_metadata(name: str, input: InputSettingMetadata, app: H
     """
     Update the setting's metadata
     """
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         setting = await db_get_setting(conn, name, include_metadata=False, include_aliases=False,
                                        include_configurable_features=False)
         if not setting:
@@ -74,7 +74,7 @@ async def update_setting_metadata_key(name: str, key: MetadataKey, input: PutSet
     """
     Updates the current metadata of the setting. Existing keys won't be deleted.
     """
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         setting = await db_get_setting(conn, name, include_metadata=False, include_aliases=False,
                                        include_configurable_features=False)
         if not setting:
@@ -97,7 +97,7 @@ async def delete_setting_metadata(name: str, input: DeleteSettingMetadataInput, 
     """
     Delete a setting's metadata.
     """
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         setting = await db_get_setting(conn, name, include_metadata=False, include_aliases=False,
                                        include_configurable_features=False)
         if not setting:
@@ -117,7 +117,7 @@ async def delete_rule_key_from_metadata(name: str, key: MetadataKey, input: Dele
     """
     Delete a specific key from the setting's metadata.
     """
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         setting = await db_get_setting(conn, name, include_metadata=False, include_aliases=False,
                                        include_configurable_features=False)
         if not setting:
@@ -146,7 +146,7 @@ async def get_setting_metadata(name: str, app: HeksherApp = application):
     """
     Get metadata of a setting.
     """
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         if not (setting := await db_get_setting(conn, name, include_metadata=True, include_aliases=False,
                                                 include_configurable_features=False)):
             return PlainTextResponse(f'the setting {name} does not exist', status_code=status.HTTP_404_NOT_FOUND)

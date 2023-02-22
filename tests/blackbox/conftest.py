@@ -2,7 +2,7 @@ import sys
 from subprocess import run
 
 from pytest import fixture
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from yellowbox import docker_client as _docker_client
 from yellowbox.extras.postgresql import PostgreSQLService
 
@@ -29,13 +29,14 @@ def sql_engine(sql_service):
 
 @fixture
 def purge_sql(sql_service, sql_engine):
-    with sql_engine.connect() as connection:
-        connection.execute(f'''
+    with sql_engine.begin() as connection:
+        connection.execute(text(f'''
         DROP SCHEMA public CASCADE;
         CREATE SCHEMA public;
         GRANT ALL ON SCHEMA public TO {sql_service.user};
         GRANT ALL ON SCHEMA public TO public;
-        ''')
+        '''))
     # we run create_all from outside to avoid alembic's side effects
-    run([sys.executable, 'alembic/from_scratch.py', sql_service.local_connection_string()], check=True)
+    run([sys.executable, 'alembic/from_scratch.py', sql_service.local_connection_string()], env={'PYTHONPATH': '.'},
+        check=True)
     yield

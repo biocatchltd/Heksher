@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from functools import cached_property
 from itertools import groupby
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import orjson
 from _operator import itemgetter
-from sqlalchemy import String, column, delete, join, or_, select, values
+from sqlalchemy import Row, String, column, delete, join, or_, select, values
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -19,8 +19,8 @@ class SettingSpec:
     raw_type: Optional[str]
     raw_default_value: Any
     metadata: Optional[Dict[str, Any]]
-    configurable_features: Optional[List[str]]
-    aliases: Optional[List[str]]
+    configurable_features: Optional[Sequence[str]]
+    aliases: Optional[Sequence[str]]
     version: str
 
     @cached_property
@@ -45,7 +45,7 @@ async def db_get_canonical_names(conn: AsyncConnection, names_or_aliases: Iterab
     names_table = values(column('n', String), name='names').data([(name,) for name in names_or_aliases])
 
     stmt = (
-        select([names_table.c.n, settings.c.name])
+        select(names_table.c.n, settings.c.name)
         .select_from(
             join(names_table,
                  join(settings,
@@ -57,14 +57,14 @@ async def db_get_canonical_names(conn: AsyncConnection, names_or_aliases: Iterab
             )
         .distinct()
     )
-    results = (await conn.execute(stmt)).all()
-    return dict(results)
+    results: Sequence[Row[Tuple[str, str]]] = (await conn.execute(stmt)).all()
+    return dict(results)  # type: ignore[arg-type]
 
 
 async def db_get_setting(conn: AsyncConnection, name_or_alias: str, *, include_metadata: bool, include_aliases: bool,
                          include_configurable_features: bool) -> Optional[SettingSpec]:
     stmt = (
-        select([settings.c.name, settings.c.type, settings.c.default_value, settings.c.version])
+        select(settings.c.name, settings.c.type, settings.c.default_value, settings.c.version)
         .select_from(
             join(settings, setting_aliases, settings.c.name == setting_aliases.c.setting, isouter=True)
         )
@@ -77,7 +77,7 @@ async def db_get_setting(conn: AsyncConnection, name_or_alias: str, *, include_m
     setting_name = data_row['name']
     if include_aliases:
         stmt = (
-            select([setting_aliases.c.alias])
+            select(setting_aliases.c.alias)
             .select_from(
                 join(settings, setting_aliases, settings.c.name == setting_aliases.c.setting)
             )
@@ -90,7 +90,7 @@ async def db_get_setting(conn: AsyncConnection, name_or_alias: str, *, include_m
 
     if include_configurable_features:
         stmt = (
-            select([configurable.c.context_feature])
+            select(configurable.c.context_feature)
             .select_from(
                 join(configurable, context_features, configurable.c.context_feature == context_features.c.name)
             )
@@ -103,10 +103,10 @@ async def db_get_setting(conn: AsyncConnection, name_or_alias: str, *, include_m
 
     if include_metadata:
         stmt = (
-            select([setting_metadata.c.key, setting_metadata.c.value])
+            select(setting_metadata.c.key, setting_metadata.c.value)
             .where(setting_metadata.c.setting == setting_name)
         )
-        metadata_ = dict((await conn.execute(stmt)).all())
+        metadata_: Optional[Dict[str, Any]] = dict((await conn.execute(stmt)).all())  # type: ignore[arg-type]
     else:
         metadata_ = None
 
@@ -207,7 +207,7 @@ async def db_get_settings(conn: AsyncConnection, include_configurable_features: 
     Returns:
         A list of all setting specs in the DB
     """
-    select_query = select([settings.c.name, settings.c.type, settings.c.default_value, settings.c.version]) \
+    select_query = select(settings.c.name, settings.c.type, settings.c.default_value, settings.c.version) \
         .order_by(settings.c.name)
 
     if setting_names:
@@ -216,7 +216,7 @@ async def db_get_settings(conn: AsyncConnection, include_configurable_features: 
     records = (await conn.execute(select_query)).all()
     if include_configurable_features:
         configurable_rows = (await conn.execute(
-            select([configurable.c.setting, configurable.c.context_feature])
+            select(configurable.c.setting, configurable.c.context_feature)
             .select_from(join(configurable, context_features,
                               configurable.c.context_feature == context_features.c.name))
             .order_by(configurable.c.setting, context_features.c.index)

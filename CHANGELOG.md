@@ -1,4 +1,7 @@
 # Heksher Changelog
+## Next
+### Internal 
+* support for newest sqlalchemy
 ## 0.5.3
 ### Changed 
 * reverted the limited user introduced in 0.5.2 since it breaks older docker systems

@@ -66,7 +66,7 @@ async def get_setting(name: str, app: HeksherApp = application):
     """
     Get details on a setting.
     """
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         setting = await db_get_setting(conn, name, include_metadata=True, include_aliases=True,
                                        include_configurable_features=True)
         if not setting:
@@ -105,7 +105,7 @@ async def get_settings(include_additional_data: bool = False, app: HeksherApp = 
     """
     List all the settings in the service
     """
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         results = (await db_get_settings(conn, include_metadata=include_additional_data,
                                          include_aliases=include_additional_data,
                                          include_configurable_features=include_additional_data)).values()
@@ -154,7 +154,7 @@ async def set_setting_type(name: str, input: PutSettingTypeInput, app: HeksherAp
     """
     Change The type of a setting
     """
-    async with app.engine.connect() as conn:  # note that the connection may be upgraded to transaction
+    async with app.engine.begin() as conn:  # note that the connection may be upgraded to transaction
         setting = await db_get_setting(conn, name, include_metadata=False, include_aliases=False,
                                        include_configurable_features=False)
         if not setting:
@@ -208,7 +208,7 @@ async def rename_setting(name: str, input: RenameSettingInput, app: HeksherApp =
     """
     Rename a setting, adding the previous name as an alias
     """
-    async with app.engine.connect() as conn:  # note that the connection may be upgraded to transaction
+    async with app.engine.begin() as conn:  # note that the connection may be upgraded to transaction
         # we try and validate the names we were given, and check they do not conflict with other settings
         names_map = await db_get_canonical_names(conn, (name, input.name))
         # the names map should contain 2 entries:
@@ -264,7 +264,7 @@ class ConfigurableFeaturesInput(ORJSONModel):
                 }
             })
 async def set_configurable_features(name: str, input: ConfigurableFeaturesInput, app: HeksherApp = application):
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         setting = await db_get_setting(conn, name, include_metadata=False, include_aliases=False,
                                        include_configurable_features=True)
         if not setting:

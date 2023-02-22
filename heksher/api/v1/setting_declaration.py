@@ -122,7 +122,7 @@ async def declare_setting(input: DeclareSettingInput, app: HeksherApp = applicat
     """
     Ensure that a setting exists, creating it if necessary.
     """
-    async with app.engine.connect() as conn:  # note that we might upgrade the connection to a transaction
+    async with app.engine.begin() as conn:  # note that we might upgrade the connection to a transaction
         existing = await db_get_setting(conn, input.name, include_aliases=True, include_metadata=True,
                                         include_configurable_features=True)
         if input.alias:

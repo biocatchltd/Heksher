@@ -25,7 +25,7 @@ async def check_context_features(app: HeksherApp = application):
     """
     Get a listing of all the context features, in their hierarchical order.
     """
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         cfs = await db_get_context_features(conn)
     return GetContextFeaturesResponse(context_features=(name for (name, _) in cfs))
 
@@ -39,7 +39,7 @@ async def get_context_feature(name: str, app: HeksherApp = application):
     """
     Returns the index of the context feature; If it doesn't exists, returns status code 404.
     """
-    async with app.engine.connect() as conn:
+    async with app.engine.begin() as conn:
         index = await db_get_context_feature_index(conn, name)
     if index is None:
         return Response(status_code=status.HTTP_404_NOT_FOUND)
