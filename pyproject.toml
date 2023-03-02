@@ -5,16 +5,16 @@ description = "Heksker"
 authors = ["Biocatch LTD <serverteam@biocatch.com>"]
 
 [tool.poetry.dependencies]
-python = "~3.10"
+python = "~3.11"
 
-fastapi = "^0.76.0"
+fastapi = "^0.92.0"
 orjson = "^3.4.0"
 pydantic = "^1.7.0"
-uvicorn = "^0.17.6"
-envolved = "^0.3.0"
+uvicorn = {version="^0.20.0", extras=["standard"]}
+envolved = "^0.5.0"
 
 SQLAlchemy = "^2"
-asyncpg = "^0.23.0"
+asyncpg = "^0.27.0"
 sentry-sdk = "^1.1.0"
 
 alembic = "^1.4.3"
@@ -23,21 +23,15 @@ aiologstash2 = "^2.0.1"
 
 [tool.poetry.dev-dependencies]
 async-asgi-testclient = "^1.4.6"
-httpx = "^0.23.0"
+httpx = "*"
 pytest-cov = "*"
 flake8 = "*"
 requests = "^2.25.1"
 yellowbox = {extras = ["postgresql"], version = "^0.8.0"}
 mypy = "*"
-types-orjson = "^0.1.1"
-isort = "^5.9.1"
+types-orjson = "*"
+isort = "*"
 Sphinx = "^4.3.1"
 sphinx-rtd-theme = "^1.0.0"
 pytest-asyncio = "*"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.2.1"
-
-[build-system]
-requires = ["poetry>=1.0.0"]
-build-backend = "poetry.masonry.api"
+pytest = "*"

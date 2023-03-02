@@ -22,7 +22,7 @@ async def test_startup_existing_contexts(monkeypatch, sql_service, sql_engine, p
         INSERT into context_features VALUES ('user', 0), ('trust', 1), ('theme', 2);
         """))
 
-    async with TestClient(app):
+    async with TestClient(app()):
         pass
 
 
@@ -38,7 +38,7 @@ async def test_startup_existing_unexpected_contexts(monkeypatch, sql_service, sq
 
     with raises(Exception):
         ''' async_asgi_testclient raises Exception for any exception on startup, so we can't be more specific  '''
-        async with TestClient(app):
+        async with TestClient(app()):
             pass
 
 
@@ -53,7 +53,7 @@ async def test_startup_existing_bad_order(monkeypatch, sql_service, sql_engine, 
         """))
 
     with raises(Exception):
-        async with TestClient(app):
+        async with TestClient(app()):
             pass
 
 
@@ -67,7 +67,7 @@ async def test_startup_existing_contexts_with_bad_indices(monkeypatch, sql_servi
         INSERT into context_features VALUES ('user', 0), ('trust', 3), ('theme', 5);
         """))
 
-    async with TestClient(app):
+    async with TestClient(app()):
         pass
 
     with sql_engine.begin() as connection:
@@ -92,7 +92,7 @@ async def test_startup_existing_contexts_new_contexts(monkeypatch, sql_service, 
         INSERT into context_features VALUES ('trust', 0);
         """))
 
-    async with TestClient(app):
+    async with TestClient(app()):
         pass
 
     with sql_engine.begin() as connection:
@@ -126,7 +126,7 @@ async def test_startup_logstash(monkeypatch, sql_service, purge_sql):
 
         monkeypatch.setattr(aiologstash2, 'create_tcp_handler', mock_create_handler)
 
-        async with TestClient(app):
+        async with TestClient(app()):
             await sleep(0.1)  # wait for logstash records
             # new context features were added, we should be seeing their logs now
             assert logstash.records

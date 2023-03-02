@@ -1,11 +1,7 @@
 import asyncio
 from unittest.mock import AsyncMock
 
-from async_asgi_testclient import TestClient
 from pytest import fixture
-
-import heksher.app as app_mod
-from heksher.main import app
 
 
 class MockEngine:
@@ -40,16 +36,6 @@ class DBConnectionMock:
 def mock_engine():
     ret = MockEngine()
     return ret
-
-
-@fixture
-async def app_client(monkeypatch, mock_engine):
-    monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', 'postgresql://dbuser:swordfish@pghost10/')
-
-    monkeypatch.setattr(app_mod, 'create_async_engine', mock_engine)
-
-    async with TestClient(app) as app_client:
-        yield app_client
 
 
 @fixture(scope='session')

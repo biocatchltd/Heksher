@@ -1,4 +1,4 @@
-FROM python:3.10
+FROM python:3.11
 
 RUN apt-get update && \
     apt-get -y install gcc build-essential
@@ -23,4 +23,4 @@ RUN export APP_VERSION=$(poetry version | cut -d' ' -f2) && echo "__version__ = 
 ENV PYTHONPATH=${PYTHONPATH}:/usr/src/app/heksher
 ENV PYTHONOPTIMIZE=1
 
-CMD ["uvicorn", "heksher.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "heksher.main:app", "--host", "0.0.0.0", "--port", "80", "--factory"]
