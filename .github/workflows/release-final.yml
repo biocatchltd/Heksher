@@ -68,11 +68,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install poetry==1.4.0
-          poetry install
+          poetry install --no-dev
       - name: create openapi file
         env:
           PYTHONPATH: .
-        run: python tools/generate_openapi.py
+        run: poetry run python tools/generate_openapi.py
       - name: register openapi as artifact
         uses: svenstaro/upload-release-action@v2
         with:
