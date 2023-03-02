@@ -26,7 +26,7 @@ async def app_client(monkeypatch, sql_service, purge_sql, check_indexes_of_cf):
     monkeypatch.setenv('HEKSHER_DB_CONNECTION_STRING', sql_service.local_connection_string())
     monkeypatch.setenv('HEKSHER_STARTUP_CONTEXT_FEATURES', 'user;trust;theme')
 
-    async with TestClient(app) as app_client:
+    async with TestClient(app()) as app_client:
         yield app_client
 
 

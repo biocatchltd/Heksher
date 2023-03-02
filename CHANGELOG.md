@@ -1,6 +1,7 @@
 # Heksher Changelog
 ## Next
-### Internal 
+### Internal
+* upgrade to python 3.11 
 * support for newest sqlalchemy
 ## 0.5.3
 ### Changed 

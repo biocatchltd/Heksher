@@ -1,12 +1,13 @@
 import re
 from asyncio import wait_for
+from dataclasses import dataclass
 from logging import INFO, getLogger
 from typing import Dict, Sequence
 
 import orjson
 import sentry_sdk
 from aiologstash2 import create_tcp_handler
-from envolved import EnvVar, Schema
+from envolved import env_var
 from envolved.parsers import CollectionParser
 from fastapi import FastAPI, Request
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
@@ -21,21 +22,26 @@ from heksher.util import db_url_with_async_driver
 
 logger = getLogger('heksher')
 
-connection_string = EnvVar('HEKSHER_DB_CONNECTION_STRING', type=db_url_with_async_driver)
-startup_context_features = EnvVar('HEKSHER_STARTUP_CONTEXT_FEATURES', type=CollectionParser(';', str), default=None)
-doc_only_ev = EnvVar("DOC_ONLY", type=bool, default=False)
+connection_string = env_var('HEKSHER_DB_CONNECTION_STRING', type=db_url_with_async_driver)
+startup_context_features = env_var('HEKSHER_STARTUP_CONTEXT_FEATURES', type=CollectionParser(';', str), default=None)
+doc_only_ev = env_var("DOC_ONLY", type=bool, default=False)
 
 
-class LogstashSettingSchema(Schema):
-    # todo remove explicit uppercase names when envolved is upgraded
-    host: str = EnvVar('HOST')
-    port: int = EnvVar('PORT')
-    level: int = EnvVar('LEVEL', default=INFO)
-    tags = EnvVar('TAGS', type=CollectionParser.pair_wise_delimited(re.compile(r'\s'), ':', str, str), default={})
+@dataclass
+class LogstashSettings:
+    host: str
+    port: int
+    level: int
+    tags: dict[str, str]
 
 
-logstash_settings_ev = EnvVar('HEKSHER_LOGSTASH_', default=None, type=LogstashSettingSchema)
-sentry_dsn_ev = EnvVar('SENTRY_DSN', default='', type=str)
+logstash_settings_ev = env_var('HEKSHER_LOGSTASH_', default=None, type=LogstashSettings, args={
+    'host': env_var('HOST'),
+    'port': env_var('PORT'),
+    'level': env_var('LEVEL', default=INFO),
+    'tags': env_var('TAGS', type=CollectionParser.pair_wise_delimited(re.compile(r'\s'), ':', str, str), default={})
+})
+sentry_dsn_ev = env_var('SENTRY_DSN', default='', type=str)
 
 redoc_mode_whitelist = frozenset((
     '/favicon.ico',
@@ -89,6 +95,7 @@ class HeksherApp(FastAPI):
                     return PlainTextResponse("The server is running in doc_only mode, only docs/ and redoc/ paths"
                                              " are supported", HTTP_404_NOT_FOUND)
                 return await call_next(request)
+
             return
         logstash_settings = logstash_settings_ev.get()
         if logstash_settings is not None:
