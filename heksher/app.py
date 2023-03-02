@@ -58,7 +58,22 @@ class HeksherApp(FastAPI):
     """
     engine: AsyncEngine
     health_monitor: HealthMonitor
-    doc_only: bool
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.doc_only = doc_only_ev.get()
+        if self.doc_only:
+            @self.middleware('http')
+            async def doc_only_middleware(request: Request, call_next):
+                path = request.url.path
+                if path.endswith("/"):
+                    # our whitelist is without a trailing slash. we remove the slash here and let starlette's redirect
+                    # do its work
+                    path = path[:-1]
+                if path not in redoc_mode_whitelist:
+                    return PlainTextResponse("The server is running in doc_only mode, only docs/ and redoc/ paths"
+                                             " are supported", HTTP_404_NOT_FOUND)
+                return await call_next(request)
 
     async def ensure_context_features(self, expected_context_features: Sequence[str]):
         async with self.engine.begin() as conn:
@@ -82,20 +97,7 @@ class HeksherApp(FastAPI):
                 await db_add_context_features(conn, dict(super_sequence))
 
     async def startup(self):
-        self.doc_only = doc_only_ev.get()
         if self.doc_only:
-            @self.middleware('http')
-            async def doc_only_middleware(request: Request, call_next):
-                path = request.url.path
-                if path.endswith("/"):
-                    # our whitelist is without a trailing slash. we remove the slash here and let starlette's redirect
-                    # do its work
-                    path = path[:-1]
-                if path not in redoc_mode_whitelist:
-                    return PlainTextResponse("The server is running in doc_only mode, only docs/ and redoc/ paths"
-                                             " are supported", HTTP_404_NOT_FOUND)
-                return await call_next(request)
-
             return
         logstash_settings = logstash_settings_ev.get()
         if logstash_settings is not None:
@@ -129,5 +131,7 @@ class HeksherApp(FastAPI):
                 logger.exception("cannot start sentry")
 
     async def shutdown(self):
+        if self.doc_only:
+            return
         await self.health_monitor.stop()
         await wait_for(self.engine.dispose(), timeout=10)
