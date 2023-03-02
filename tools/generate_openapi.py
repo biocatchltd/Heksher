@@ -1,5 +1,6 @@
 import json
 import tomllib
+
 from heksher.main import app
 
 app = app()
