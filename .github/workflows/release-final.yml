@@ -76,5 +76,5 @@ jobs:
       - name: register openapi as artifact
         uses: svenstaro/upload-release-action@v2
         with:
-          name: openapi.json
+          file: openapi.json
 
