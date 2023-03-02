@@ -56,6 +56,7 @@ jobs:
   attach_openapi_to_release:
     needs: [build_release]
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
