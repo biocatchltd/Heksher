@@ -26,7 +26,7 @@ async-asgi-testclient = "^1.4.6"
 httpx = "*"
 pytest-cov = "*"
 flake8 = "*"
-requests = "^2.25.1"
+requests = "^2.31.0"
 yellowbox = {extras = ["postgresql"], version = "^0.8.0"}
 mypy = "*"
 types-orjson = "*"
