@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.11.6-slim-bookworm
 
 RUN apt-get update && \
     apt-get -y install gcc build-essential
